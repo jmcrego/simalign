@@ -163,7 +163,7 @@ class Model():
             align_ones_mask = tf.greater(self.align, tf.zeros_like(self.align,dtype=tf.float32))
             input_ali_mask = tf.equal(self.input_ali, 1.0+tf.zeros_like(self.align,dtype=tf.float32))
             ones = tf.to_float(tf.logical_or(align_ones_mask,input_ali_mask))
-            error_ones =  tf.log(1 + tf.exp(self.align * self.input_ali * -ones)) ### do not consider errors of unaligned words
+            error_ones =  tf.log(1 + tf.exp(self.align * -self.input_ali)) * ones ### do not consider errors of words not predicted (or reference) aligned
             ###
             self.aggregation_src = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (tf.transpose(error_ones,[0,2,1]), self.len_tgt), dtype=tf.float32, name="aggregation_src")
             self.aggregation_tgt = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (error_ones,                       self.len_src), dtype=tf.float32, name="aggregation_tgt")
