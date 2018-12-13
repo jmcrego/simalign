@@ -39,7 +39,7 @@ class Config():
    -lr_method   STRING : GD method either: adam, adagrad, adadelta, sgd, rmsprop [adam]
    -dropout      FLOAT : dropout ratio [0.3]
    -error       STRING : error function (mse, exp) [exp]
-   -aggr        STRING : aggregation function (sum, max, mean, lse) [sum]
+   -aggr        STRING : aggregation function (sum, lse) [sum]
    -max_sents      INT : Consider this number of sentences per batch (0 for all) [0]
    -n_epochs       INT : train for this number of epochs [1]
    -report_every   INT : report every this many batches [100]
