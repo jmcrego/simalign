@@ -163,8 +163,9 @@ class Model():
             if self.config.aggr == 'sum':
                 self.aggregation_src = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (tf.transpose(error_ones,[0,2,1]), self.len_tgt), dtype=tf.float32, name="aggregation_src")
                 self.aggregation_tgt = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (error_ones,                       self.len_src), dtype=tf.float32, name="aggregation_tgt")
-            elif self.config.aggr == 'mean':
             elif self.config.aggr == 'lse':
+                sys.stderr.write("error: -aggr lse not yet supported '{}'\n")
+                sys.exit()                
             else: 
                 sys.stderr.write("error: bad -aggr option '{}'\n".format(self.config.aggr))
                 sys.exit()
@@ -173,25 +174,20 @@ class Model():
     def add_loss(self):
         with tf.name_scope("loss"):
 
-            if self.config.mode == 'mse' or self.config.mode == 'exp':
-                if self.config.mode == 'mse': 
-                    self.error = tf.pow(self.align - self.input_ali, 2) ### mean squared error of alignment pairs
-                elif self.config.mode == 'exp': 
-                    self.error = tf.log(1 + tf.exp(self.align * -self.input_ali)) ### LogExp error of alignment pairs
+            self.loss_src = tf.reduce_mean(tf.map_fn(lambda (x,l): tf.reduce_sum(x[:l]), (self.aggregation_src, self.len_src), dtype=tf.float32))
+            self.loss_tgt = tf.reduce_mean(tf.map_fn(lambda (x,l): tf.reduce_sum(x[:l]), (self.aggregation_tgt, self.len_tgt), dtype=tf.float32))
+            self.loss = self.loss_tgt + self.loss_src
 
-                ### scale errors of aligned pairs (input_ali==1.0)
-                self.error = tf.where(tf.equal(self.input_ali,1.0), self.error*self.scale, self.error)            
-                ### loss as average of individual errors
-                self.loss = tf.reduce_sum(self.error) / tf.count_nonzero(self.input_ali, dtype = tf.float32)
-
-            elif self.config.mode == 'agg': 
-                self.loss_src = tf.reduce_mean(tf.map_fn(lambda (x,l): tf.reduce_sum(x[:l]), (self.aggregation_src, self.len_src), dtype=tf.float32))
-                self.loss_tgt = tf.reduce_mean(tf.map_fn(lambda (x,l): tf.reduce_sum(x[:l]), (self.aggregation_tgt, self.len_tgt), dtype=tf.float32))
-                self.loss = self.loss_tgt + self.loss_src
-
-            else:
-                sys.stderr.write("error: bad -mode option '{}'\n".format(self.config.mode))
-                sys.exit()
+#            if self.config.mode == 'mse' or self.config.mode == 'exp':
+#                if self.config.mode == 'mse': 
+#                    self.error = tf.pow(self.align - self.input_ali, 2) ### mean squared error of alignment pairs
+#                elif self.config.mode == 'exp': 
+#                    self.error = tf.log(1 + tf.exp(self.align * -self.input_ali)) ### LogExp error of alignment pairs
+#                ### scale errors of aligned pairs (input_ali==1.0)
+#                self.error = tf.where(tf.equal(self.input_ali,1.0), self.error*self.scale, self.error)            
+#                ### loss as average of individual errors
+#                self.loss = tf.reduce_sum(self.error) / tf.count_nonzero(self.input_ali, dtype = tf.float32)
+#            elif self.config.mode == 'agg': 
 
     def add_train(self):
         if   self.config.lr_method == 'adam':     optimizer = tf.train.AdamOptimizer(self.lr)
