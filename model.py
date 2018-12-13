@@ -70,9 +70,9 @@ class Model():
         self.len_tgt    = tf.placeholder(tf.int32, shape=[None], name="len_tgt")
         self.lr         = tf.placeholder(tf.float32, shape=[], name="lr")
 
-        n_pairs = 1.0 + tf.count_nonzero(self.input_ali, dtype=tf.float32)
-        n_ones = 1.0 + tf.count_nonzero(tf.equal(self.input_ali,tf.zeros(tf.shape(self.input_ali))+1.0), dtype=tf.float32)
-        self.scale = n_pairs / n_ones
+#        n_pairs = 1.0 + tf.count_nonzero(self.input_ali, dtype=tf.float32)
+#        n_ones = 1.0 + tf.count_nonzero(tf.equal(self.input_ali,tf.zeros(tf.shape(self.input_ali))+1.0), dtype=tf.float32)
+#        self.scale = n_pairs / n_ones
 
     def add_model(self):
         BS = tf.shape(self.input_src)[0] #batch size
