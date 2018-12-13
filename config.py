@@ -37,6 +37,7 @@ class Config():
    -lr           FLOAT : initial learning rate [0.001]
    -lr_decay     FLOAT : learning rate decay [0.9]
    -lr_method   STRING : GD method either: adam, adagrad, adadelta, sgd, rmsprop [adam]
+   -clip         FLOAT : gradient clipping value (0.0 for no clipping) [0.0]
    -dropout      FLOAT : dropout ratio [0.3]
    -error       STRING : error function (mse, exp) [exp]
    -aggr        STRING : aggregation function (sum, lse) [sum]
@@ -84,6 +85,7 @@ class Config():
         self.lr = 0.001
         self.lr_decay = 0.9
         self.lr_method = "adam"
+        self.clip = 0.0
 
         self.seq_size = 50
         self.batch_size = 32
@@ -274,6 +276,8 @@ class Config():
                 self.lr_decay = float(argv.pop(0))
             elif (tok=="-lr_method" and len(argv)):
                 self.lr_method = argv.pop(0)
+            elif (tok=="-clip" and len(argv)):
+                self.clip = float(argv.pop(0))
             elif (tok=="-error" and len(argv)):
                 self.error = argv.pop(0)
             elif (tok=="-aggr" and len(argv)):

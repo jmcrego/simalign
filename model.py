@@ -43,6 +43,7 @@ class Score():
         if self.TP + self.FN > 0: self.R = 1. * self.TP / (self.TP + self.FN) #true positives out of all that were actually positive
         if self.P + self.R > 0.0: self.F = 2. * self.P * self.R / (self.P + self.R) #F-measure
         if self.TP + self.TN + self.FP + self.FN > 0: self.A = 1.0 * (self.TP + self.TN) / (self.TP + self.TN + self.FP + self.FN) #Accuracy
+        self.results = "A{:.4f},P{:.4f},R{:.4f},F{:.4f} | TP:{},TN:{},FP:{},FN:{}".format(self.A,self.P,self.R,self.F,self.TP,self.TN,self.FP,self.FN)
 
 class Model():
     def __init__(self, config):
@@ -200,10 +201,9 @@ class Model():
             sys.exit()
 
 
-        clip = 0.0
-        if clip > 0.0:
+        if self.config.clip > 0.0:
             tvars = tf.trainable_variables()
-            grads, _ = tf.clip_by_global_norm(tf.gradients(self.loss, tvars), clip)
+            grads, _ = tf.clip_by_global_norm(tf.gradients(self.loss, tvars), self.config.clip)
             self.train_op = optimizer.apply_gradients(zip(grads, tvars))
         else:
             self.train_op = optimizer.minimize(self.loss)
@@ -270,14 +270,14 @@ class Model():
                 curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
                 iscore.summarize()
                 ILOSS = ILOSS/self.config.report_every
-                sys.stdout.write('{} Epoch {} Iteration {}/{} loss:{:.4f} (A{:.4f},P{:.4f},R{:.4f},F{:.4f} TP:{},TN:{},FP:{},FN:{})\n'.format(curr_time,curr_epoch,iter+1,nbatches,ILOSS,iscore.A,iscore.P,iscore.R,iscore.F,iscore.TP,iscore.TN,iscore.FP,iscore.FN))
+                sys.stdout.write('{} Epoch {} Iteration {}/{} loss:{:.4f} ({})\n'.format(curr_time,curr_epoch,iter+1,nbatches,ILOSS,iscore.results))
                 ILOSS = 0.0
                 iscore = Score()
 
         TLOSS = TLOSS/nbatches
         tscore.summarize()
         curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
-        sys.stdout.write('{} Epoch {} TRAIN loss={:.4f} (A{:.4f},P{:.4f},R{:.4f},F{:.4f}) lr={:.4f}'.format(curr_time,curr_epoch,TLOSS,tscore.A,tscore.P,tscore.R,tscore.F,lr))
+        sys.stdout.write('{} Epoch {} TRAIN loss={:.4f} ({}) lr={:.4f}'.format(curr_time,curr_epoch,TLOSS,tscore.results,lr))
         unk_src = float(100) * train.nunk_src / train.nsrc
         unk_tgt = float(100) * train.nunk_tgt / train.ntgt
         sys.stdout.write(' Train set: words={}/{} %ones={:.2f} %unk={:.2f}/{:.2f}\n'.format(train.nsrc,train.ntgt,100.0*train.nones/train.nlnks,unk_src,unk_tgt))
@@ -299,7 +299,7 @@ class Model():
                 VLOSS += loss # append single value which is a mean of losses of the n examples in the batch
             vscore.summarize()
             VLOSS = VLOSS/nbatches
-            sys.stdout.write('{} Epoch {} VALID loss={:.4f} (A{:.4f},P{:.4f},R{:.4f},F{:.4f} TP:{},TN:{},FP:{},FN:{})'.format(curr_time,curr_epoch,VLOSS,vscore.A,vscore.P,vscore.R,vscore.F,vscore.TP,vscore.TN,vscore.FP,vscore.FN))
+            sys.stdout.write('{} Epoch {} VALID loss={:.4f} ({})'.format(curr_time,curr_epoch,VLOSS,vscore.results))
             unk_src = float(100) * dev.nunk_src / dev.nsrc
             unk_tgt = float(100) * dev.nunk_tgt / dev.ntgt
             sys.stdout.write(' Valid set: words={}/{} %ones={:.2f} %unk={:.2f}/{:.2f}\n'.format(dev.nsrc,dev.ntgt,100.0*dev.nones/dev.nlnks,unk_src,unk_tgt,VLOSS))
@@ -379,7 +379,7 @@ class Model():
             score.summarize()
             unk_s = float(100) * tst.nunk_src / tst.nsrc
             unk_t = float(100) * tst.nunk_tgt / tst.ntgt
-            sys.stdout.write('TEST words={}/{} %unk={:.2f}/{:.2f} (A{:.4f},P{:.4f},R{:.4f},F{:.4f}) (TP:{},TN:{},FP:{},FN:{})\n'.format(tst.nsrc,tst.ntgt,unk_s,unk_t,score.A,score.P,score.R,score.F,score.TP,score.TN,score.FP,score.FN))
+            sys.stdout.write('TEST words={}/{} %unk={:.2f}/{:.2f} ({})\n'.format(tst.nsrc,tst.ntgt,unk_s,unk_t,score.results))
 
         if self.config.show_svg: print "</body>\n</html>"
 
