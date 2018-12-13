@@ -34,14 +34,15 @@ class Config():
    -tgt_lstm_size  INT : hidden units for tgt bi-lstm [256]
 
    -p_unpaired   FLOAT : probability of introducing an unpaired sentence [0.0]
-   -lr           FLOAT : initial learning rate [1.0]
+   -lr           FLOAT : initial learning rate [0.001]
    -lr_decay     FLOAT : learning rate decay [0.9]
-   -lr_method   STRING : GD method either: adam, adagrad, adadelta, sgd, rmsprop [adagrad]
+   -lr_method   STRING : GD method either: adam, adagrad, adadelta, sgd, rmsprop [adam]
    -dropout      FLOAT : dropout ratio [0.3]
-   -mode        STRING : error function (mse, exp) [mse]
+   -error       STRING : error function (mse, exp) [exp]
+   -aggr        STRING : aggregation function (sum, max, mean, lse) [sum]
    -max_sents      INT : Consider this number of sentences per batch (0 for all) [0]
    -n_epochs       INT : train for this number of epochs [1]
-   -report_every   INT : report every this many batches [1000]
+   -report_every   INT : report every this many batches [100]
 
  [INFERENCE OPTIONS]
 *  -epoch          INT : epoch to use ([mdir]/epoch[epoch] must exist)
@@ -80,9 +81,9 @@ class Config():
 
         self.p_unpaired = 0.0
         self.dropout = 0.3
-        self.lr = 1.0
+        self.lr = 0.001
         self.lr_decay = 0.9
-        self.lr_method = "adagrad"
+        self.lr_method = "adam"
 
         self.seq_size = 50
         self.batch_size = 32
@@ -90,9 +91,10 @@ class Config():
         self.n_epochs = 1
         self.last_epoch = 0 # epochs already run
         self.seed = 1234
-        self.report_every = 1000
+        self.report_every = 100
         self.debug = False
-        self.mode = "mse"
+        self.error = "exp"
+        self.aggr = "sum"
 
         self.show_matrix = False
         self.show_svg = False
@@ -272,8 +274,10 @@ class Config():
                 self.lr_decay = float(argv.pop(0))
             elif (tok=="-lr_method" and len(argv)):
                 self.lr_method = argv.pop(0)
-            elif (tok=="-mode" and len(argv)):
-                self.mode = argv.pop(0)
+            elif (tok=="-error" and len(argv)):
+                self.error = argv.pop(0)
+            elif (tok=="-aggr" and len(argv)):
+                self.aggr = argv.pop(0)
 
             elif (tok=="-show_matrix"):
                 self.show_matrix = True
