@@ -155,8 +155,7 @@ class Model():
             ###
             #align_pos_mask contains 1.0 for pairs predicted positive in self.align and 0.0 for the rest
             align_ones_mask = tf.greater(self.align, tf.zeros_like(self.align,dtype=tf.float32))
-            tf.cast(align_ones_mask, tf.int32)
-            tf.cast(align_ones_mask, tf.float32)
+            align_ones_mask = tf.cast(align_ones_mask, tf.float32)
             align_ones = self.align * align_ones_mask
             error_ones =  tf.log(1 + tf.exp(align_ones * -self.input_ali)) ### do not consider errors of unaligned words
             self.aggregation_src = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (tf.transpose(error_ones,[0,2,1]), self.len_tgt), dtype=tf.float32, name="aggregation_src")
