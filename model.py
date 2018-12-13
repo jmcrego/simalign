@@ -95,8 +95,8 @@ class Model():
             cell_fw = tf.contrib.rnn.LSTMCell(L1, state_is_tuple=True)
             cell_bw = tf.contrib.rnn.LSTMCell(L1, state_is_tuple=True)
             (output_src_fw, output_src_bw), (last_src_fw, last_src_bw) = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, self.embed_src, sequence_length=self.len_src, dtype=tf.float32)
-            output_src_fw = tf.nn.l2_normalize(output_src_fw,dim=1)
-            output_src_bw = tf.nn.l2_normalize(output_src_bw,dim=1)
+#            output_src_fw = tf.nn.l2_normalize(output_src_fw,dim=1)
+#            output_src_bw = tf.nn.l2_normalize(output_src_bw,dim=1)
 
         ### divergence
         self.last_src = tf.concat([last_src_fw[1], last_src_bw[1]], axis=1)
@@ -124,8 +124,8 @@ class Model():
             cell_fw = tf.contrib.rnn.LSTMCell(L1, state_is_tuple=True)
             cell_bw = tf.contrib.rnn.LSTMCell(L1, state_is_tuple=True)
             (output_tgt_fw, output_tgt_bw), (last_tgt_fw, last_tgt_bw) = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, self.embed_tgt, sequence_length=self.len_tgt, dtype=tf.float32)
-            output_tgt_fw = tf.nn.l2_normalize(output_tgt_fw,dim=1)
-            output_tgt_bw = tf.nn.l2_normalize(output_tgt_bw,dim=1)
+#            output_tgt_fw = tf.nn.l2_normalize(output_tgt_fw,dim=1)
+#            output_tgt_bw = tf.nn.l2_normalize(output_tgt_bw,dim=1)
 
         ### divergence
         self.last_tgt = tf.concat([last_tgt_fw[1], last_tgt_bw[1]], axis=1)                
