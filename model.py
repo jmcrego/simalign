@@ -270,17 +270,17 @@ class Model():
                 curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
                 iscore.summarize()
                 ILOSS = ILOSS/self.config.report_every
-                sys.stdout.write('{} Epoch {} Iteration {}/{} loss:{:.4f} ({})\n'.format(curr_time,curr_epoch,iter+1,nbatches,ILOSS,iscore.results))
+                sys.stderr.write('{} Epoch {} Iteration {}/{} loss:{:.4f} ({})\n'.format(curr_time,curr_epoch,iter+1,nbatches,ILOSS,iscore.results))
                 ILOSS = 0.0
                 iscore = Score()
 
         TLOSS = TLOSS/nbatches
         tscore.summarize()
         curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
-        sys.stdout.write('{} Epoch {} TRAIN loss={:.4f} ({}) lr={:.4f}'.format(curr_time,curr_epoch,TLOSS,tscore.results,lr))
+        sys.stderr.write('{} Epoch {} TRAIN loss={:.4f} ({}) lr={:.4f}'.format(curr_time,curr_epoch,TLOSS,tscore.results,lr))
         unk_src = float(100) * train.nunk_src / train.nsrc
         unk_tgt = float(100) * train.nunk_tgt / train.ntgt
-        sys.stdout.write(' Train set: words={}/{} %ones={:.2f} %unk={:.2f}/{:.2f}\n'.format(train.nsrc,train.ntgt,100.0*train.nones/train.nlnks,unk_src,unk_tgt))
+        sys.stderr.write(' Train set: words={}/{} %ones={:.2f} %unk={:.2f}/{:.2f}\n'.format(train.nsrc,train.ntgt,100.0*train.nones/train.nlnks,unk_src,unk_tgt))
 
         ##########################
         # evaluate over devset ###
@@ -299,10 +299,10 @@ class Model():
                 VLOSS += loss # append single value which is a mean of losses of the n examples in the batch
             vscore.summarize()
             VLOSS = VLOSS/nbatches
-            sys.stdout.write('{} Epoch {} VALID loss={:.4f} ({})'.format(curr_time,curr_epoch,VLOSS,vscore.results))
+            sys.stderr.write('{} Epoch {} VALID loss={:.4f} ({})'.format(curr_time,curr_epoch,VLOSS,vscore.results))
             unk_src = float(100) * dev.nunk_src / dev.nsrc
             unk_tgt = float(100) * dev.nunk_tgt / dev.ntgt
-            sys.stdout.write(' Valid set: words={}/{} %ones={:.2f} %unk={:.2f}/{:.2f}\n'.format(dev.nsrc,dev.ntgt,100.0*dev.nones/dev.nlnks,unk_src,unk_tgt,VLOSS))
+            sys.stderr.write(' Valid set: words={}/{} %ones={:.2f} %unk={:.2f}/{:.2f}\n'.format(dev.nsrc,dev.ntgt,100.0*dev.nones/dev.nlnks,unk_src,unk_tgt,VLOSS))
 
         #################################
         #keep record of current epoch ###
@@ -329,7 +329,7 @@ class Model():
     def learn(self, train, dev, n_epochs):
         lr = self.config.lr
         curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
-        sys.stdout.write("{} Training with {} sentence pairs: {} batches with up to {} examples each.\n".format(curr_time,len(train),(len(train)+self.config.batch_size-1)//self.config.batch_size,self.config.batch_size))
+        sys.stderr.write("{} Training with {} sentence pairs: {} batches with up to {} examples each.\n".format(curr_time,len(train),(len(train)+self.config.batch_size-1)//self.config.batch_size,self.config.batch_size))
         best_score = 0
         best_epoch = 0
         for iter in range(n_epochs):
@@ -379,7 +379,7 @@ class Model():
             score.summarize()
             unk_s = float(100) * tst.nunk_src / tst.nsrc
             unk_t = float(100) * tst.nunk_tgt / tst.ntgt
-            sys.stdout.write('TEST words={}/{} %unk={:.2f}/{:.2f} ({})\n'.format(tst.nsrc,tst.ntgt,unk_s,unk_t,score.results))
+            sys.stderr.write('TEST words={}/{} %unk={:.2f}/{:.2f} ({})\n'.format(tst.nsrc,tst.ntgt,unk_s,unk_t,score.results))
 
         if self.config.show_svg: print "</body>\n</html>"
 
