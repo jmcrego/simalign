@@ -118,7 +118,7 @@ class Dataset():
             if firstline:
                 if len(line.split('\t'))==3: self.annotated = True
                 firstline = False
-            self.data.append(line)
+            self.data.append(line.strip(['\n']))
             self.length += 1
         f.close()
 
@@ -130,7 +130,7 @@ class Dataset():
         return self.length
 
     def get_unpaired_example(self, index):
-        tokens = self.data[index].strip().split('\t')
+        tokens = self.data[index].split('\t')
         if len(tokens) != 2 and len(tokens) != 3:
             sys.stderr.write("warning: bad data entry \'{}\' in line={} [skipped]\n".format(self.data[index],index+1))
             return [], [], [], False
@@ -141,7 +141,7 @@ class Dataset():
         while True:
             n_rep += 1
             index = int(random.random()*len(self.data))
-            tokens = self.data[index].strip().split('\t')
+            tokens = self.data[index].split('\t')
             if len(tokens) >= 2 and len(tokens) <= 3:
                 tgt = tokens[1].split(' ')
                 if len(tgt) >= len(src) and float(len(src)) / float(len(tgt)) >= 0.9: break
@@ -154,7 +154,7 @@ class Dataset():
 
 
     def get_paired_example(self, index):
-        tokens = self.data[index].strip().split('\t')
+        tokens = self.data[index].split('\t')
         if len(tokens) != 2 and len(tokens) != 3:
             sys.stderr.write("warning: bad data entry \'{}\' in line={} [skipped]\n".format(self.data[index],index+1))
             return [], [], [], False
