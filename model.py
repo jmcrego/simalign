@@ -165,8 +165,8 @@ class Model():
             self.error_tgt = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (error_ones,                       self.len_src), dtype=tf.float32, name="error_tgt")
 
             pred_ones = self.align * tf.to_float(align_ones_mask) ### matrix that contain the alignment predictions only if positive (aligned pair)
-            self.aggregation_src = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (tf.transpose(pred_ones,[0,2,1]), self.len_tgt), dtype=tf.float32, name="aggregation_src")
-            self.aggregation_tgt = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (pred_ones,                       self.len_src), dtype=tf.float32, name="aggregation_tgt")
+            self.aggregation_src = tf.map_fn(lambda (x,l) : tf.reduce_mean(x[:l,:],0), (tf.transpose(pred_ones,[0,2,1]), self.len_tgt), dtype=tf.float32, name="aggregation_src")
+            self.aggregation_tgt = tf.map_fn(lambda (x,l) : tf.reduce_mean(x[:l,:],0), (pred_ones,                       self.len_src), dtype=tf.float32, name="aggregation_tgt")
 
 
 #            if self.config.aggr == 'sum':
