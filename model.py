@@ -166,8 +166,8 @@ class Model():
 
             pred_ones = self.align * tf.to_float(align_ones_mask) ### matrix that contain the alignment predictions only if positive (aligned pair)
             ### aggr is mean 
-            self.aggregation_src = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0)/tf.count_nonzero(x[[:l,:],0], dtype = tf.float32), (tf.transpose(pred_ones,[0,2,1]), self.len_tgt), dtype=tf.float32, name="aggregation_src")
-            self.aggregation_tgt = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0)/tf.count_nonzero(x[[:l,:],0], dtype = tf.float32), (pred_ones,                       self.len_src), dtype=tf.float32, name="aggregation_tgt")
+            self.aggregation_src = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0)/tf.count_nonzero(x[:l,:],0], dtype = tf.float32), (tf.transpose(pred_ones,[0,2,1]), self.len_tgt), dtype=tf.float32, name="aggregation_src")
+            self.aggregation_tgt = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0)/tf.count_nonzero(x[:l,:],0], dtype = tf.float32), (pred_ones,                       self.len_src), dtype=tf.float32, name="aggregation_tgt")
             ### aggr is sum
 #            self.aggregation_src = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (tf.transpose(pred_ones,[0,2,1]), self.len_tgt), dtype=tf.float32, name="aggregation_src")
 #            self.aggregation_tgt = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (pred_ones,                       self.len_src), dtype=tf.float32, name="aggregation_tgt")
