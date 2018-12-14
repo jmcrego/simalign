@@ -47,7 +47,7 @@ class Visualize():
         print "<br>\n<svg width=\""+str(len_x*len_square + start_x + 150)+"\" height=\""+str(len_y*len_square + start_y)+"\">"
         for x in range(len(self.tgt)): ### tgt
             col="black"
-            print "<text x=\""+str(x*len_square + start_x)+"\" y=\""+str(start_y-2)+"\" fill=\""+col+"\" font-family=\"Courier\" font-size=\"5\">"+"</text>"
+            print "<text x=\""+str(x*len_square + start_x)+"\" y=\""+str(start_y-2)+"\" fill=\""+col+"\" font-family=\"Courier\" font-size=\"5\">"+"{:+.1f}".format(self.aggr_tgt[x])+"</text>"
             col="black" ### remove this line if you want divergent words in red
             print "<text x=\""+str(x*len_square + start_x + separation)+"\" y=\""+str(start_y-15)+"\" fill=\""+col+"\" font-family=\"Courier\" font-size=\"10\" transform=\"rotate(-45 "+str(x*len_square + start_x + 10)+","+str(start_y-15)+") \">"+self.tgt[x]+"</text>"
 
