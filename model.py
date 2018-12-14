@@ -355,7 +355,7 @@ class Model():
         for iter, (src_batch, tgt_batch, ali_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(tst, self.config.batch_size)):
             fd = self.get_feed_dict(src_batch, tgt_batch, ali_batch, len_src_batch, len_tgt_batch, 0.0)
 
-            align_batch, last_src_batch, last_tgt_batch, sim_batch, aggr_src_batch, aggr_tgt_batch = self.sess.run([self.align, self.last_src, self.last_tgt, self.cos_similarity], self.aggregation_src, self.aggregation_tgt, feed_dict=fd)
+            align_batch, last_src_batch, last_tgt_batch, sim_batch, aggr_src_batch, aggr_tgt_batch = self.sess.run([self.align, self.last_src, self.last_tgt, self.cos_similarity, self.aggregation_src, self.aggregation_tgt], feed_dict=fd)
             if tst.annotated: 
                 score.add_batch(align_batch, ali_batch)
 
