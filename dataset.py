@@ -118,7 +118,7 @@ class Dataset():
             if firstline:
                 if len(line.split('\t'))==3: self.annotated = True
                 firstline = False
-            self.data.append(line.strip())
+            self.data.append(line.strip('\n'))
             self.length += 1
         f.close()
 
