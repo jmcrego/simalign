@@ -355,25 +355,16 @@ class Model():
         for iter, (src_batch, tgt_batch, ali_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(tst, self.config.batch_size)):
             fd = self.get_feed_dict(src_batch, tgt_batch, ali_batch, len_src_batch, len_tgt_batch, 0.0)
 
-            align_batch, last_src_batch, last_tgt_batch, sim_batch = self.sess.run([self.align, self.last_src, self.last_tgt, self.cos_similarity], feed_dict=fd)
+            align_batch, last_src_batch, last_tgt_batch, sim_batch, aggr_src_batch, aggr_tgt_batch = self.sess.run([self.align, self.last_src, self.last_tgt, self.cos_similarity], self.aggregation_src, self.aggregation_tgt, feed_dict=fd)
             if tst.annotated: 
                 score.add_batch(align_batch, ali_batch)
 
             for i_sent in range(len(align_batch)):
                 n_sents += 1
-                v = Visualize(n_sents,raw_src_batch[i_sent],raw_tgt_batch[i_sent],sim_batch[i_sent],align_batch[i_sent])
+                v = Visualize(n_sents,raw_src_batch[i_sent],raw_tgt_batch[i_sent],sim_batch[i_sent],align_batch[i_sent],aggr_src_batch[i_sent],aggr_tgt_batch[i_sent],last_src_batch[i_sent],last_tgt_batch[i_sent])
                 if self.config.show_svg: v.print_svg()
                 elif self.config.show_matrix: v.print_matrix()
-                else:
-                    last_src = []
-                    last_tgt = []
-                    align = []
-                    if self.config.show_last: 
-                        last_src = last_src_batch[i_sent]
-                        last_tgt = last_tgt_batch[i_sent]
-                    if self.config.show_align: 
-                        align = align_batch[i_sent]
-                    v.print_vectors(last_src,last_tgt,align)
+                else: v.print_vectors(self.config.show_last,self.config.show_align)
 
         if tst.annotated:
             score.summarize()
