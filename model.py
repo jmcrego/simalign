@@ -150,7 +150,7 @@ class Model():
             ### for each src (or tgt) word aggregate the errors of reference/predicted alignments to tgt (or src) words
             ###
             align_ones_mask = tf.greater(self.align, tf.zeros_like(self.align,dtype=tf.float32))
-            input_ali_mask = tf.equal(self.input_ali, 1.0+tf.zeros_like(self.align,dtype=tf.float32))
+            input_ali_mask = tf.equal(self.input_ali, 1.0+tf.zeros_like(self.align,dtype=tf.float32)) ### all to 0.0 when inference (no alignment given)
             ones_mask = tf.to_float(tf.logical_or(align_ones_mask,input_ali_mask)) ### this is the mask of the words for which i compute the error
 
             if self.config.error == 'exp':
@@ -161,22 +161,30 @@ class Model():
                 sys.stderr.write("error: bad -error option '{}'\n".format(self.config.error))
                 sys.exit()
 
-            if self.config.aggr == 'sum':
-                self.aggregation_src = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (tf.transpose(error_ones,[0,2,1]), self.len_tgt), dtype=tf.float32, name="aggregation_src")
-                self.aggregation_tgt = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (error_ones,                       self.len_src), dtype=tf.float32, name="aggregation_tgt")
-            elif self.config.aggr == 'lse':
-                sys.stderr.write("error: -aggr lse not yet supported '{}'\n")
-                sys.exit()                
-            else: 
-                sys.stderr.write("error: bad -aggr option '{}'\n".format(self.config.aggr))
-                sys.exit()
+            self.error_src = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (tf.transpose(error_ones,[0,2,1]), self.len_tgt), dtype=tf.float32, name="error_src")
+            self.error_tgt = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (error_ones,                       self.len_src), dtype=tf.float32, name="error_tgt")
 
+            pred_ones = self.align * align_ones_mask ### matrix that contain the alignment predictions only if positive (aligned pair)
+            self.aggregation_src = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (tf.transpose(pred_ones,[0,2,1]), self.len_tgt), dtype=tf.float32, name="aggregation_src")
+            self.aggregation_tgt = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (pred_ones,                       self.len_src), dtype=tf.float32, name="aggregation_tgt")
+
+
+#            if self.config.aggr == 'sum':
+#                self.aggregation_src = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (tf.transpose(error_ones,[0,2,1]), self.len_tgt), dtype=tf.float32, name="aggregation_src")
+#                self.aggregation_tgt = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (error_ones,                       self.len_src), dtype=tf.float32, name="aggregation_tgt")
+#            elif self.config.aggr == 'lse':
+#                R = 1.0
+#                self.aggregation_src = tf.divide(tf.log(tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (tf.exp(tf.transpose(self.error_ones,[0,2,1]) * R), self.len_tgt), dtype=tf.float32)), R, name="aggregation_src")
+#                self.aggregation_tgt = tf.divide(tf.log(tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (tf.exp(self.error_ones * R),                       self.len_src), dtype=tf.float32)), R, name="aggregation_tgt")
+#            else: 
+#                sys.stderr.write("error: bad -aggr option '{}'\n".format(self.config.aggr))
+#                sys.exit()
 
     def add_loss(self):
         with tf.name_scope("loss"):
 
-            self.loss_src = tf.reduce_mean(tf.map_fn(lambda (x,l): tf.reduce_sum(x[:l]), (self.aggregation_src, self.len_src), dtype=tf.float32))
-            self.loss_tgt = tf.reduce_mean(tf.map_fn(lambda (x,l): tf.reduce_sum(x[:l]), (self.aggregation_tgt, self.len_tgt), dtype=tf.float32))
+            self.loss_src = tf.reduce_mean(tf.map_fn(lambda (x,l): tf.reduce_sum(x[:l]), (self.error_src, self.len_src), dtype=tf.float32))
+            self.loss_tgt = tf.reduce_mean(tf.map_fn(lambda (x,l): tf.reduce_sum(x[:l]), (self.error_tgt, self.len_tgt), dtype=tf.float32))
             self.loss = self.loss_tgt + self.loss_src
 
 #            if self.config.mode == 'mse' or self.config.mode == 'exp':
