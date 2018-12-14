@@ -66,7 +66,7 @@ class Visualize():
                 print "<text x=\""+str(x*len_square + start_x)+"\" y=\""+str(y*len_square + start_y + len_square*3/4)+"\" fill=\"{}\" font-family=\"Courier\" font-size=\"5\">".format(txtcolor)+"{:+.1f}".format(self.align[y][x])+"</text>"
 
             col="black"
-            print "<text x=\""+str(len_x*len_square + start_x + separation)+"\" y=\""+str(y*len_square + start_y + len_square*3/4)+"\" fill=\""+col+"\" font-family=\"Courier\" font-size=\"5\">"+"</text>"
+            print "<text x=\""+str(len_x*len_square + start_x + separation)+"\" y=\""+str(y*len_square + start_y + len_square*3/4)+"\" fill=\""+col+"\" font-family=\"Courier\" font-size=\"5\">"+"{:+.1f}".format(self.aggr_src[y])+"</text>"
             col="black" ### remove this line if you want divergent words in red
             print "<text x=\""+str(len_x*len_square + start_x + separation + 15)+"\" y=\""+str(y*len_square + start_y + len_square*3/4)+"\" fill=\""+col+"\" font-family=\"Courier\" font-size=\"10\">"+self.src[y]+"</text>"
         print("<br>\n<svg width=\"200\" height=\"20\">")
