@@ -11,13 +11,16 @@ from dataset import minibatches
 
 class Visualize():
 
-    def __init__(self,n_sents,src,tgt,sim,align): 
+    def __init__(self,n_sents,src,tgt,sim,align,aggr_src,aggr_tgt,last_src,last_tgt): 
         self.n_sents = n_sents
         self.src = src
         self.tgt = tgt
         self.sim = sim
         self.align = align
-
+        self.aggr_src = aggr_src
+        self.aggr_tgt = aggr_tgt
+        self.last_src = last_src
+        self.last_tgt = last_tgt
 
     def print_matrix(self):
         print('<:::{}:::> cosine sim = {:.4f}'.format(self.n_sents, self.sim))
@@ -69,21 +72,20 @@ class Visualize():
         print("<br>\n<svg width=\"200\" height=\"20\">")
         print("<text x=\"{}\" y=\"10\" fill=\"black\" font-family=\"Courier\" font-size=\"8\"\">{:+.4f}</text>".format(start_x,self.sim))
 
-    def print_vectors(self,last_src,last_tgt,align):
+    def print_vectors(self,show_last,show_align):
         line = []
         line.append("{:.4f}".format(self.sim))
         line.append(" ".join(s for s in self.src))
         line.append(" ".join(t for t in self.tgt))
 
-        if len(last_src) and len(last_tgt): 
-            line.append(" ".join("{:.4f}".format(s) for s in last_src))
-            line.append(" ".join("{:.4f}".format(t) for t in last_tgt))
+        if show_last:
+            line.append(" ".join("{:.4f}".format(s) for s in self.last_src))
+            line.append(" ".join("{:.4f}".format(t) for t in self.last_tgt))
 
-        if len(align): 
+        if show_align: 
             matrix = []
             for s in range(len(self.src)):
-                row = " ".join("{:.4f}".format(align[s,t]) for t in range(len(self.tgt)))
+                row = " ".join("{:.4f}".format(self.align[s,t]) for t in range(len(self.tgt)))
                 matrix.append(row)
-            line.append("\t".join(row for row in matrix))
-        
+            line.append("\t".join(row for row in matrix))        
         print "\t".join(line)
