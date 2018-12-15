@@ -310,8 +310,8 @@ class Dataset():
         indexs = [i for i in range(len(self.data))]
         if self.do_shuffle: shuffle(indexs)
         for index in indexs:
+            src, tgt, ali = [], [], []
             if self.annotated:
-                src, tgt, ali = [], [], []
                 p = random.random() # p in [0.0, 1.0)
                 ###
                 ### unpair
