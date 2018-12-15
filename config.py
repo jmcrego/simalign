@@ -33,14 +33,20 @@ class Config():
    -src_lstm_size  INT : hidden units for src bi-lstm [256]
    -tgt_lstm_size  INT : hidden units for tgt bi-lstm [256]
 
-   -p_unpaired   FLOAT : probability of introducing an unpaired sentence [0.0]
-   -lr           FLOAT : initial learning rate [0.001]
-   -lr_decay     FLOAT : learning rate decay [0.9]
-   -lr_method   STRING : GD method either: adam, adagrad, adadelta, sgd, rmsprop [adam]
-   -clip         FLOAT : gradient clipping value (0.0 for no clipping) [0.0]
    -dropout      FLOAT : dropout ratio [0.3]
    -error       STRING : error function (mse, exp) [exp]
    -aggr        STRING : aggregation function (sum, lse) [sum]
+   -lr_method   STRING : GD method either: adam, adagrad, adadelta, sgd, rmsprop [adam]
+   -lr           FLOAT : initial learning rate [0.001]
+   -lr_decay     FLOAT : learning rate decay if lr_method is sgd [0.9]
+   -clip         FLOAT : gradient clipping value (0.0 for no clipping) [0.0]
+
+   -p_unpair     FLOAT : probability of unpairing a sentence [0.0]
+   -p_swap       FLOAT : probability of swapping a sentence [0.0]
+   -p_remove     FLOAT : probability of removing a sequence of words in a sentence [0.0]
+   -p_extend     FLOAT : probability of extending a sequence of words in a sentence [0.0]
+   -p_replace    FLOAT : probability of replacing a sequence of words in a sentence [0.0]
+
    -max_sents      INT : Consider this number of sentences per batch (0 for all) [0]
    -n_epochs       INT : train for this number of epochs [1]
    -report_every   INT : report every this many batches [100]
@@ -80,7 +86,12 @@ class Config():
         self.src_lstm_size = 256
         self.tgt_lstm_size = 256
 
-        self.p_unpaired = 0.0
+        self.p_unpair = 0.0
+        self.p_swap = 0.0
+        self.p_remove = 0.0
+        self.p_extend = 0.0
+        self.p_replace = 0.0
+
         self.dropout = 0.3
         self.lr = 0.001
         self.lr_decay = 0.9
@@ -261,8 +272,16 @@ class Config():
             elif (tok=="-tgt_lstm_size" and len(argv)):
                 self.tgt_lstm_size = int(argv.pop(0))
 
-            elif (tok=="-p_unpaired" and len(argv)):
-                self.p_unpaired = float(argv.pop(0))
+            elif (tok=="-p_unpair" and len(argv)):
+                self.p_unpair = float(argv.pop(0))
+            elif (tok=="-p_swap" and len(argv)):
+                self.p_swap = float(argv.pop(0))
+            elif (tok=="-p_remove" and len(argv)):
+                self.p_remove = float(argv.pop(0))
+            elif (tok=="-p_extend" and len(argv)):
+                self.p_extend = float(argv.pop(0))
+            elif (tok=="-p_replace" and len(argv)):
+                self.p_replace = float(argv.pop(0))
 
             elif (tok=="-seq_size" and len(argv)):
                 self.seq_size = int(argv.pop(0))

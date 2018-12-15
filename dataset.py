@@ -95,9 +95,10 @@ class Vocab():
         if s not in self.tok_to_idx: return idx_unk
         return self.tok_to_idx[s]
 
+
 class Dataset():
 
-    def __init__(self, file, voc_src, voc_tgt, seq_size, max_sents, p_unpaired, do_shuffle):
+    def __init__(self, file, voc_src, voc_tgt, seq_size, max_sents, p_unpair, p_swap, p_remove, p_extend, p_replace, do_shuffle):
         if file is None: return None
         self.voc_src = voc_src 
         self.voc_tgt = voc_tgt 
@@ -106,66 +107,190 @@ class Dataset():
         self.max_sents = max_sents
         self.do_shuffle = do_shuffle
         self.annotated = False
-        self.p_unpaired = p_unpaired
+        self.p_unpair = p_unpair
+        self.p_swap = p_swap
+        self.p_remove = p_remove
+        self.p_extend = p_extend
+        self.p_replace = p_replace
         self.data = []
         self.length = 0 ### length of the data set to be used (not necessarily the whole set)
+        self.max_rep = 100
 
 #        with io.open(self.file, 'r', encoding='utf-8', newline='\n', errors='ignore') as f:
         if self.file.endswith('.gz'): f = gzip.open(self.file, 'rb')
         else: f = io.open(self.file, 'r', encoding='utf-8', newline='\n', errors='ignore')
-        firstline = True
-        for line in f: 
-            if firstline:
-                if len(line.split('\t'))==3: self.annotated = True
-                firstline = False
-            self.data.append(line.strip('\n'))
+        nline = 0
+        for line in f:
+            line = line.strip('\n') 
+            nline += 1
+            ntokens = len(line.split('\t'))
+            if nline==1 and ntokens==3: self.annotated = True
+            if (self.annotated and ntokens != 3) or (not self.annotated and ntokens != 2):
+                sys.stderr.write("warning: bad data entry \'{}\' in line={} [skipped]\n".format(line,nline))
+                continue;
+            tokens = line.split('\t')
+            src = tokens[0].split(' ')
+            tgt = tokens[1].split(' ')
+            if self.seq_size > 0 and (len(src) > self.seq_size or len(tgt) > self.seq_size): continue
+            ali = []
+            if ntokens == 3: ali = tokens[2].split(' ')
+            self.data.append([src,tgt,ali])
             self.length += 1
         f.close()
 
         if self.max_sents > 0:
-            self.length = min(self.length,self.max_sents) 
+            self.length = min(self.length,self.max_sents)
         sys.stderr.write('({} contains {} examples)\n'.format(self.file,len(self.data)))
 
     def __len__(self):
         return self.length
 
-    def get_unpaired_example(self, index):
-        tokens = self.data[index].split('\t')
-        if len(tokens) != 2 and len(tokens) != 3:
-            sys.stderr.write("warning: bad data entry \'{}\' in line={} [skipped]\n".format(self.data[index],index+1))
-            return [], [], [], False
-        src = tokens[0].split(' ')
-        ali = []
-
+    def get_unpair_example(self, index):
+        (src, tgt, ali) = self.data[index]
         n_rep = 0
         while True:
             n_rep += 1
-            index = int(random.random()*len(self.data))
-            tokens = self.data[index].split('\t')
-            if len(tokens) >= 2 and len(tokens) <= 3:
-                tgt = tokens[1].split(' ')
-                if len(tgt) >= len(src) and float(len(src)) / float(len(tgt)) >= 0.9: break
-                if len(tgt) < len(src) and float(len(tgt)) / float(len(src)) >= 0.9: break
+            if n_rep > self.max_rep: break
+            index2 = int(random.random()*len(self.data))
+            (src2, tgt2, ali2) = self.data[index2]
+            if random.random() < 0.5: #replace src by src2 (src and src2 must be of similar size)
+                if float(abs(len(src)-len(src2))) / float(max(len(src),len(src2))) < 0.1: return src2, tgt, []
+            else: #replace tgt by tgt2
+                if abs(len(tgt)-len(tgt2)) / max(len(tgt),len(tgt2)) < 0.2: return src, tgt2, []
+        return [], [], []
 
-            if n_rep == 100: return [], [], [], False
+    def get_extend_example(self, index):
+        (src, tgt, ali) = self.data[index]
+        n_rep = 0
+        while True:
+            n_rep += 1
+            if n_rep > self.max_rep: break
+            index2 = int(random.random()*len(self.data))
+            (src2, tgt2, ali2) = self.data[index2]
+            if len(src2)>5 and len(tgt2)>5:
+                mid = int(random.random() * (len(src)-1))
+                if random.random() < 0.5: src.extend(src2[mid:]) #extend in src
+                else:                     tgt.extend(tgt2[mid:]) #extend in tgt
+                return src, tgt, ali
+        return [], [], []
 
-        if self.seq_size > 0 and (len(src) > self.seq_size or len(tgt) > self.seq_size): return [], [], [], False # filter out examples with more than seq_size tokens
-        return src, tgt, ali, True
+    def get_replace_example(self, index):
+        (src, tgt, ali) = self.data[index]
+        # to replace, sentences must be at least 10 words
+        if len(src) < 10 or len(tgt) < 10: return [], [], []
+#        print('################')
+#        print("SRC1 {}".format(" ".join([s for s in src])))
+#        print("TGT1 {}".format(" ".join([t for t in tgt])))
+#        print("ALI1 {}".format(" ".join([a for a in ali])))
+        n_rep = 0
+        while True:
+            n_rep += 1
+            if n_rep > self.max_rep: break
+    
+            if random.random() < 0.5: #replace src
+                ini = int(random.random() * len(src)) 
+                l = int(random.random() * (len(src)-ini-1)) + 1
+                end = ini + l
+#                print("src [{}, +{}, {}) {}".format(ini,l,end," ".join(src[s] for s in range(ini,end))))
+                index2 = int(random.random()*len(self.data))
+                (src2, tgt2, _) = self.data[index2]
+                if len(src2) < l: continue
+#                print("SRC2 {}".format(" ".join([s for s in src2])))
+                ini2 = int(random.random() * (len(src2)-l))
+                end2 = ini2 + l
+#                print("src2 [{}, +{}, {}) {}".format(ini2,l,end2," ".join(src2[s] for s in range(ini2,end2))))
+                for s in range(ini,end): src[s] = src2[s+ini2-ini]
+#                print("SRC' {}".format(" ".join([s for s in src])))
+                ali2 = []
+                for a in ali:
+                    if len(a.split('-')) != 2:
+                        sys.stderr.write('warning: bad alignment: {}\n'.format(a))
+                        continue
+                    s, t = map(int, a.split('-'))
+                    if s >= len(src):
+                        sys.stderr.write('warning: src alignment: {} out of bounds: {}\n'.format(s, src))
+                        continue
+                    if t >= len(tgt):
+                        sys.stderr.write('warning: tgt alignment: {} out of bounds: {}\n'.format(t, tgt))
+                        continue
+                    if (s<ini or s>=end): ali2.append("{}-{}".format(s,t))
+#                print("ALI' {}".format(" ".join([a for a in ali])))
+                return src, tgt, ali2
 
+            else: #replace tgt
+                ini = int(random.random() * len(tgt)) 
+                l = int(random.random() * (len(tgt)-ini-1)) + 1
+                end = ini + l
+#                print("tgt [{}, +{}, {}) {}".format(ini,l,end," ".join(tgt[t] for t in range(ini,end))))
+                index2 = int(random.random()*len(self.data))
+                (src2, tgt2, _) = self.data[index2]
+                if len(tgt2) < l: continue
+#                print("TGT2 {}".format(" ".join([t for t in tgt2])))
+                ini2 = int(random.random() * (len(tgt2)-l))
+                end2 = ini2 + l
+#                print("tgt2 [{}, +{}, {}) {}".format(ini2,l,end2," ".join(tgt2[t] for t in range(ini2,end2))))
+                for t in range(ini,end): tgt[t] = tgt2[t+ini2-ini]
+#                print("TGT' {}".format(" ".join([t for t in tgt])))
+                ali2 = []
+                for a in ali:
+                    if len(a.split('-')) != 2:
+                        sys.stderr.write('warning: bad alignment: {}\n'.format(a))
+                        continue
+                    s, t = map(int, a.split('-'))
+                    if s >= len(src):
+                        sys.stderr.write('warning: src alignment: {} out of bounds: {}\n'.format(s,src))
+                        continue
+                    if t >= len(tgt):
+                        sys.stderr.write('warning: tgt alignment: {} out of bounds: {}\n'.format(t,tgt))
+                        continue
+                    if (t<ini or t>=end): ali2.append("{}-{}".format(s,t))
+#                print("ALI' {}".format(" ".join([a for a in ali])))
+                return src, tgt, ali2
 
-    def get_paired_example(self, index):
-        tokens = self.data[index].split('\t')
-        if len(tokens) != 2 and len(tokens) != 3:
-            sys.stderr.write("warning: bad data entry \'{}\' in line={} [skipped]\n".format(self.data[index],index+1))
-            return [], [], [], False
-        src = tokens[0].split(' ')
-        tgt = tokens[1].split(' ')
-        ali = []
-        if self.seq_size > 0 and (len(src) > self.seq_size or len(tgt) > self.seq_size): 
-            return [], [], [], False # filter out examples with more than seq_size tokens
-        if len(tokens) == 3: 
-            ali = tokens[2].split(' ')
-        return src, tgt, ali, True
+        return [], [], []
+
+    def get_swap_example(self, index):
+        (src, tgt, ali) = self.data[index]
+        # to swap, sentences must be at least 10 words
+        if len(src) < 10: return [], [], []
+
+        min_t = [-1] * len(src) #min target word aligned to source s
+        max_t = [-1] * len(src) #max target word aligned to source s
+        for a in ali:
+            if len(a.split('-')) != 2:
+                sys.stderr.write('warning: bad alignment: {}\n'.format(a))
+                continue
+            s, t = map(int, a.split('-'))
+            if s >= len(src):
+                sys.stderr.write('warning: src alignment: {} out of bounds\n'.format(s))
+                continue
+            if t >= len(tgt):
+                sys.stderr.write('warning: tgt alignment: {} out of bounds\n'.format(t))
+                continue
+            if min_t[s] == -1 or t < min_t[s]: min_t[s] = t
+            if max_t[s] == -1 or t > max_t[s]: max_t[s] = t
+
+        mid = len(src)/2
+        points = range(mid-3,mid+3)
+        shuffle(points)
+        for p in points:
+            max_t_p = max(max_t[:p]) ### maximum target word t aligned to source words [:p] --> [0,p-1]
+            min_t_p = min(min_t[p:]) ### minimum target word t aligned to source words [p:] --> [p,len(s)-1]
+            if min_t_p > max_t_p: 
+                ### swap src words and alignments
+                ### s1 s2 s3 s4 s5 s6 =(p=4)=> s4 s5 s6 s1 s2 s3
+                src2 = []
+                for s in range(p,len(src)): src2.append(src[s])            
+                for s in range(0,p): src2.append(src[s])            
+                ali2 = []
+                for a in ali:
+                    s, t = map(int, a.split('-'))
+                    if s>=p: s = s-p
+                    else: s = s + len(src) - p
+                    ali2.append("{}-{}".format(s,t))
+                return src2, tgt, ali2
+
+        return [], [], []
 
     def __iter__(self):
         nsent = 0
@@ -175,22 +300,67 @@ class Dataset():
         self.nunk_tgt = 0
         self.nones = 0
         self.nlnks = 0
-        self.nunpaired = 0
+        self.npair = 0
+        self.nunpair = 0
+        self.nswap = 0
+        self.nremove = 0
+        self.nreplace = 0
+        self.nextend = 0
         ### every iteration i get shuffled data examples if do_shuffle
         indexs = [i for i in range(len(self.data))]
         if self.do_shuffle: shuffle(indexs)
         for index in indexs:
-            if self.p_unpaired > random.random(): #Random float in [0.0, 1.0)
-                (src, tgt, ali, ok) = self.get_unpaired_example(index)
-                self.nunpaired += 1
-#                print("unpaired")
-            else:
-                (src, tgt, ali, ok) = self.get_paired_example(index)
-#                print("paired")
-            if ok==False: continue
-#            print("src: {}".format(src))
-#            print("tgt: {}".format(tgt))
-#            print("ali: {}".format(ali))
+            if self.annotated:
+                src, tgt, ali = [], [], []
+                p = random.random() # p in [0.0, 1.0)
+                ###
+                ### unpair
+                ###
+                pmin = 0.0
+                pmax = pmin + self.p_unpair
+                if p >= pmin and p < pmax: 
+                    (src, tgt, ali) = self.get_unpair_example(index)
+                    if len(src) and len(tgt): self.nunpair += 1
+                ###
+                ### extend
+                ###
+                pmin = pmax
+                pmax = pmin + self.p_extend
+                if p >= pmin and p < pmax: 
+                    (src, tgt, ali) = self.get_extend_example(index)
+                    if len(src) and len(tgt): self.nextend += 1
+                ###
+                ### swap
+                ###
+                pmin = pmax
+                pmax = pmin + self.p_swap
+                if p >= pmin and p < pmax: 
+                    (src, tgt, ali) = self.get_swap_example(index)
+                    if len(src) and len(tgt): self.nswap += 1
+                ###
+                ### remove
+                ###
+                pmin = pmax
+                pmax = pmin + self.p_remove
+                if p >= pmin and p < pmax: 
+                    (src, tgt, ali) = self.get_remove_example(index)
+                    if len(src) and len(tgt): self.nremove += 1
+                ###
+                ### replace
+                ###
+                pmin = pmax
+                pmax = pmin + self.p_replace
+                if p >= pmin and p < pmax: 
+                    (src, tgt, ali) = self.get_replace_example(index)
+                    if len(src) and len(tgt): self.nreplace += 1
+
+            ###
+            ### pair
+            ###
+            if len(src)==0 and len(tgt)==0:
+                (src, tgt, ali) = self.data[index] 
+                if len(src) and len(tgt): self.npair += 1
+
 
             self.nones += len(ali)
             self.nlnks += len(src)*len(tgt)
@@ -209,7 +379,7 @@ class Dataset():
 
             yield isrc, itgt, ali, src, tgt
             nsent += 1
-            if self.max_sents > 0 and nsent > self.max_sents: break # already generated max_sents examples
+            if self.max_sents > 0 and nsent >= self.max_sents: break # already generated max_sents examples
 
 def minibatches(data, minibatch_size):
     SRC, TGT, ALI, RAW_SRC, RAW_TGT = [], [], [], [], []
@@ -249,6 +419,7 @@ def build_batch(SRC, TGT, ALI, RAW_SRC, RAW_TGT, max_src, max_tgt):
             s, t = map(int, a.split('-'))
             if s >= len_src:
                 sys.stderr.write('warning: src alignment: {} out of bounds {} [skipped alignment]\n'.format(s,len(SRC[i])))
+                sys.exit()
                 continue
             if t >= len_tgt:
                 sys.stderr.write('warning: tgt alignment: {} out of bounds {} [skipped alignment]\n'.format(t,len(TGT[i])))

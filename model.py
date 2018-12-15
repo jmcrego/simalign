@@ -165,7 +165,7 @@ class Model():
             self.error_tgt = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (error_ones,                       self.len_src), dtype=tf.float32, name="error_tgt")
 
             pred_ones = self.align * tf.to_float(align_ones_mask) ### matrix that contain the alignment predictions only if positive (aligned pair)
-            ### aggr is sum
+            ### aggr is sum over all predicted aligned
             self.aggregation_src = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (tf.transpose(pred_ones,[0,2,1]), self.len_tgt), dtype=tf.float32, name="aggregation_src")
             self.aggregation_tgt = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (pred_ones,                       self.len_src), dtype=tf.float32, name="aggregation_tgt")
 
@@ -208,7 +208,6 @@ class Model():
         else:
             sys.stderr.write("error: bad -lr_method option '{}'\n".format(self.config.lr_method))
             sys.exit()
-
 
         if self.config.clip > 0.0:
             tvars = tf.trainable_variables()
@@ -289,7 +288,7 @@ class Model():
         sys.stderr.write('{} Epoch {} TRAIN loss={:.4f} ({}) lr={:.4f}'.format(curr_time,curr_epoch,TLOSS,tscore.results,lr))
         unk_src = float(100) * train.nunk_src / train.nsrc
         unk_tgt = float(100) * train.nunk_tgt / train.ntgt
-        sys.stderr.write(' Train set: words={}/{} %ones={:.2f} %unk={:.2f}/{:.2f}\n'.format(train.nsrc,train.ntgt,100.0*train.nones/train.nlnks,unk_src,unk_tgt))
+        sys.stderr.write(' Train set: words={}/{} %ones={:.2f} pair={} unpair={} swap={} extend={} replace={} %unk={:.2f}/{:.2f}\n'.format(train.nsrc,train.ntgt,100.0*train.nones/train.nlnks,train.npair,train.nunpair,train.nswap,train.nextend,train.nreplace,unk_src,unk_tgt))
 
         ##########################
         # evaluate over devset ###
@@ -311,7 +310,7 @@ class Model():
             sys.stderr.write('{} Epoch {} VALID loss={:.4f} ({})'.format(curr_time,curr_epoch,VLOSS,vscore.results))
             unk_src = float(100) * dev.nunk_src / dev.nsrc
             unk_tgt = float(100) * dev.nunk_tgt / dev.ntgt
-            sys.stderr.write(' Valid set: words={}/{} %ones={:.2f} %unk={:.2f}/{:.2f}\n'.format(dev.nsrc,dev.ntgt,100.0*dev.nones/dev.nlnks,unk_src,unk_tgt,VLOSS))
+            sys.stderr.write(' Valid set: words={}/{} %ones={:.2f} pair={} unpair={} swap={} extend={} replace={} %unk={:.2f}/{:.2f}\n'.format(dev.nsrc,dev.ntgt,100.0*dev.nones/dev.nlnks,dev.npair,dev.nunpair,dev.nswap,dev.nextend,dev.nreplace,unk_src,unk_tgt,VLOSS))
 
         #################################
         #keep record of current epoch ###
@@ -379,6 +378,10 @@ class Model():
             score.summarize()
             unk_s = float(100) * tst.nunk_src / tst.nsrc
             unk_t = float(100) * tst.nunk_tgt / tst.ntgt
+            curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
+            sys.stderr.write('{} TEST ({})'.format(curr_time,score.results))
+            sys.stderr.write(' Test set: words={}/{} %ones={:.2f} pair={} unpair={} swap={} extend={} replace={} %unk={:.2f}/{:.2f}\n'.format(tst.nsrc,tst.ntgt,100.0*tst.nones/tst.nlnks,tst.npair,tst.nunpair,tst.nswap,tst.nextend,tst.nreplace,unk_src,unk_tgt,VLOSS))
+
             sys.stderr.write('TEST words={}/{} %unk={:.2f}/{:.2f} ({})\n'.format(tst.nsrc,tst.ntgt,unk_s,unk_t,score.results))
 
         if self.config.show_svg: print "</body>\n</html>"
