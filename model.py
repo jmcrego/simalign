@@ -200,7 +200,7 @@ class Model():
 #            elif self.config.mode == 'agg': 
 
     def add_train(self):
-        if   self.config.lr_method == 'adam':     optimizer = tf.train.AdamOptimizer() #self.lr)
+        if   self.config.lr_method == 'adam':     optimizer = tf.train.AdamOptimizer(self.lr)
         elif self.config.lr_method == 'adagrad':  optimizer = tf.train.AdagradOptimizer(self.lr)
         elif self.config.lr_method == 'sgd':      optimizer = tf.train.GradientDescentOptimizer(self.lr)
         elif self.config.lr_method == 'rmsprop':  optimizer = tf.train.RMSPropOptimizer(self.lr)

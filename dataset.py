@@ -145,6 +145,15 @@ class Dataset():
     def __len__(self):
         return self.length
 
+    def similar_size(self, x, y):
+        m = min(x,y) 
+        M = max(x,y)
+        d = M - m
+        #m=[1,4] => d<4
+        #m=[5,9] => d<5
+        #m=[10,14] => d<6
+        return d < int(m/5)+4
+
     def get_unpair_example(self, index):
         (src, tgt, ali) = self.data[index]
         n_rep = 0
@@ -152,11 +161,12 @@ class Dataset():
             n_rep += 1
             if n_rep > self.max_rep: break
             index2 = int(random.random()*len(self.data))
+            if index2 == index: continue
             (src2, tgt2, ali2) = self.data[index2]
-            if random.random() < 0.5: #replace src by src2 (src and src2 must be of similar size)
-                if float(abs(len(src)-len(src2))) / float(max(len(src),len(src2))) < 0.1: return src2, tgt, []
+            if random.random() < 0.5: #replace src by src2 
+                if self.similar_size(len(src2),len(tgt)): return src2, tgt, []
             else: #replace tgt by tgt2
-                if abs(len(tgt)-len(tgt2)) / max(len(tgt),len(tgt2)) < 0.2: return src, tgt2, []
+                if self.similar_size(len(src),len(tgt2)): return src, tgt2, []
         return [], [], []
 
     def get_extend_example(self, index):
@@ -167,10 +177,13 @@ class Dataset():
             if n_rep > self.max_rep: break
             index2 = int(random.random()*len(self.data))
             (src2, tgt2, ali2) = self.data[index2]
-            if len(src2)>5 and len(tgt2)>5:
-                mid = int(random.random() * (len(src)-1))
-                if random.random() < 0.5: src.extend(src2[mid:]) #extend in src
-                else:                     tgt.extend(tgt2[mid:]) #extend in tgt
+            if len(src2)>=5 and len(tgt2)>=5:
+                if random.random() < 0.5: #extend in src
+                    i = int(random.random() * (len(src2)-3)) + 2
+                    src.extend(src2[i:])
+                else: #extend in tgt
+                    i = int(random.random() * (len(tgt2)-3)) + 2
+                    tgt.extend(tgt2[i:]) 
                 return src, tgt, ali
         return [], [], []
 
@@ -178,29 +191,21 @@ class Dataset():
         (src, tgt, ali) = self.data[index]
         # to replace, sentences must be at least 10 words
         if len(src) < 10 or len(tgt) < 10: return [], [], []
-#        print('################')
-#        print("SRC1 {}".format(" ".join([s for s in src])))
-#        print("TGT1 {}".format(" ".join([t for t in tgt])))
-#        print("ALI1 {}".format(" ".join([a for a in ali])))
         n_rep = 0
         while True:
             n_rep += 1
             if n_rep > self.max_rep: break
     
-            if random.random() < 0.5: #replace src
+            if random.random() < 0.5: #replace in src
                 ini = int(random.random() * len(src)) 
                 l = int(random.random() * (len(src)-ini-1)) + 1
                 end = ini + l
-#                print("src [{}, +{}, {}) {}".format(ini,l,end," ".join(src[s] for s in range(ini,end))))
                 index2 = int(random.random()*len(self.data))
                 (src2, tgt2, _) = self.data[index2]
                 if len(src2) < l: continue
-#                print("SRC2 {}".format(" ".join([s for s in src2])))
                 ini2 = int(random.random() * (len(src2)-l))
                 end2 = ini2 + l
-#                print("src2 [{}, +{}, {}) {}".format(ini2,l,end2," ".join(src2[s] for s in range(ini2,end2))))
                 for s in range(ini,end): src[s] = src2[s+ini2-ini]
-#                print("SRC' {}".format(" ".join([s for s in src])))
                 ali2 = []
                 for a in ali:
                     if len(a.split('-')) != 2:
@@ -214,23 +219,18 @@ class Dataset():
                         sys.stderr.write('warning: tgt alignment: {} out of bounds: {}\n'.format(t, tgt))
                         continue
                     if (s<ini or s>=end): ali2.append("{}-{}".format(s,t))
-#                print("ALI' {}".format(" ".join([a for a in ali])))
                 return src, tgt, ali2
 
-            else: #replace tgt
+            else: #replace in tgt
                 ini = int(random.random() * len(tgt)) 
                 l = int(random.random() * (len(tgt)-ini-1)) + 1
                 end = ini + l
-#                print("tgt [{}, +{}, {}) {}".format(ini,l,end," ".join(tgt[t] for t in range(ini,end))))
                 index2 = int(random.random()*len(self.data))
                 (src2, tgt2, _) = self.data[index2]
                 if len(tgt2) < l: continue
-#                print("TGT2 {}".format(" ".join([t for t in tgt2])))
                 ini2 = int(random.random() * (len(tgt2)-l))
                 end2 = ini2 + l
-#                print("tgt2 [{}, +{}, {}) {}".format(ini2,l,end2," ".join(tgt2[t] for t in range(ini2,end2))))
                 for t in range(ini,end): tgt[t] = tgt2[t+ini2-ini]
-#                print("TGT' {}".format(" ".join([t for t in tgt])))
                 ali2 = []
                 for a in ali:
                     if len(a.split('-')) != 2:
@@ -244,7 +244,6 @@ class Dataset():
                         sys.stderr.write('warning: tgt alignment: {} out of bounds: {}\n'.format(t,tgt))
                         continue
                     if (t<ini or t>=end): ali2.append("{}-{}".format(s,t))
-#                print("ALI' {}".format(" ".join([a for a in ali])))
                 return src, tgt, ali2
 
         return [], [], []
