@@ -389,7 +389,7 @@ class Model():
             fd = self.get_feed_dict(src_batch, tgt_batch, ali_batch, len_src_batch, len_tgt_batch, 0.0)
 
             align_batch, snt_src_batch, snt_tgt_batch, sim_batch, aggr_src_batch, aggr_tgt_batch = self.sess.run([self.align, self.snt_src, self.snt_tgt, self.cos_similarity, self.aggregation_src, self.aggregation_tgt], feed_dict=fd)
-            print("snt_src_batch is {}".format(np.shape(snt_src_batch)))
+            #print("snt_src_batch is {}".format(np.shape(snt_src_batch)))
             if tst.annotated: 
                 score.add_batch(align_batch, ali_batch)
 
