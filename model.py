@@ -104,6 +104,7 @@ class Model():
                 self.snt_src = tf.concat([last_src_fw[1], last_src_bw[1]], axis=1)
             elif self.config.sim == 'max':
                 self.snt_src = tf.map_fn(lambda (x,l): tf.reduce_max(x[:,:l], axis=1), (self.out_src, self.len_src), dtype=tf.float32)
+                print(self.snt_src)
             elif self.config.sim == 'mean':
                 mask = tf.sequence_mask(self.len_src, maxlen=tf.shape(self.out_src)[1])
                 self.snt_src = tf.reduce_sum(self.out_src, axis=1) / self.len_src
