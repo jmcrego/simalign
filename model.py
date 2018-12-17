@@ -70,9 +70,6 @@ class Model():
         self.len_tgt    = tf.placeholder(tf.int32, shape=[None], name="len_tgt")
         self.lr         = tf.placeholder(tf.float32, shape=[], name="lr")
 
-        self.input_ali_src = tf.reduce_max(self.input_ali, axis=1) # +1.0 if there is one alignment, -1 otherwise
-        self.input_ali_tgt = tf.reduce_max(self.input_ali, axis=2) # +1.0 if there is one alignment, -1 otherwise
-
     def add_model(self):
         BS = tf.shape(self.input_src)[0] #batch size
         KEEP = 1.0-self.config.dropout   # keep probability for embeddings dropout Ex: 0.7
@@ -93,11 +90,9 @@ class Model():
             #print("SRC L1={}".format(L1))
             cell_fw = tf.contrib.rnn.LSTMCell(L1, state_is_tuple=True)
             cell_bw = tf.contrib.rnn.LSTMCell(L1, state_is_tuple=True)
+            cell_fw = tf.nn.rnn_cell.DropoutWrapper(cell=cell_fw, output_keep_prob=KEEP)
+            cell_bw = tf.nn.rnn_cell.DropoutWrapper(cell=cell_bw, output_keep_prob=KEEP)            
             (output_src_fw, output_src_bw), (last_src_fw, last_src_bw) = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, self.embed_src, sequence_length=self.len_src, dtype=tf.float32)
-            ### for alignment
-            self.out_src = tf.concat([output_src_fw, output_src_bw], axis=2)
-            self.out_src = tf.nn.dropout(self.out_src, keep_prob=KEEP)
-
 
 #        sys.stderr.write("Total src parameters: {}\n".format(sum(variable.get_shape().num_elements() for variable in tf.trainable_variables())))
 
@@ -117,33 +112,31 @@ class Model():
             #print("TGT L1={}".format(L1))
             cell_fw = tf.contrib.rnn.LSTMCell(L1, state_is_tuple=True)
             cell_bw = tf.contrib.rnn.LSTMCell(L1, state_is_tuple=True)
+            cell_fw = tf.nn.rnn_cell.DropoutWrapper(cell=cell_fw, output_keep_prob=KEEP)
+            cell_bw = tf.nn.rnn_cell.DropoutWrapper(cell=cell_bw, output_keep_prob=KEEP)
             (output_tgt_fw, output_tgt_bw), (last_tgt_fw, last_tgt_bw) = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, self.embed_tgt, sequence_length=self.len_tgt, dtype=tf.float32)
-            ### for alignment
-            self.out_tgt = tf.concat([output_tgt_fw, output_tgt_bw], axis=2)
-            self.out_tgt = tf.nn.dropout(self.out_tgt, keep_prob=KEEP)
 
 #        sys.stderr.write("Total src/tgt parameters: {}\n".format(sum(variable.get_shape().num_elements() for variable in tf.trainable_variables())))
 #        for variable in tf.trainable_variables():
 #            sys.stderr.write("var {} params={}\n".format(variable,variable.get_shape().num_elements()))
 
         with tf.name_scope("similarity"):
-            ### for sentence similarity
             if self.config.sim == 'last':
                 self.snt_src = tf.concat([last_src_fw[1], last_src_bw[1]], axis=1)
                 self.snt_tgt = tf.concat([last_tgt_fw[1], last_tgt_bw[1]], axis=1)
             elif self.config.sim == 'max':
-                mask = tf.expand_dims(tf.sequence_mask(self.len_src, dtype=tf.float32), 2) #[B, S] => [B, S, 1]
-                self.snt_src = self.out_src * mask + (1-mask) * tf.float32.min 
+                mask_src = tf.expand_dims(tf.sequence_mask(self.len_src, dtype=tf.float32), 2) #[B, S] => [B, S, 1]
+                self.snt_src = self.out_src * mask_src + (1-mask_src) * tf.float32.min #masked tokens contain -Inf
                 self.snt_src = tf.reduce_max(self.snt_src, axis=1) #[B, H]
-                mask = tf.expand_dims(tf.sequence_mask(self.len_tgt, dtype=tf.float32), 2) #[B, S] => [B, S, 1]
-                self.snt_tgt = self.out_tgt * mask + (1-mask) * tf.float32.min 
+                mask_tgt = tf.expand_dims(tf.sequence_mask(self.len_tgt, dtype=tf.float32), 2) #[B, S] => [B, S, 1]
+                self.snt_tgt = self.out_tgt * mask_tgt + (1-mask_tgt) * tf.float32.min #masked tokens contain -Inf
                 self.snt_tgt = tf.reduce_max(self.snt_tgt, axis=1) #[B, H]
             elif self.config.sim == 'mean':
-                mask = tf.expand_dims(tf.sequence_mask(self.len_src, dtype=tf.float32), 2) #[B, S] => [B, S, 1]
-                self.snt_src = self.out_src * mask ### masked entries are 0
+                mask_src = tf.expand_dims(tf.sequence_mask(self.len_src, dtype=tf.float32), 2) #[B, S] => [B, S, 1]
+                self.snt_src = self.out_src * mask_src #masked tokens contain 0.0
                 self.snt_src = tf.reduce_sum(self.snt_src, axis=1) / tf.expand_dims(tf.to_float(self.len_src), 1)
-                mask = tf.expand_dims(tf.sequence_mask(self.len_tgt, dtype=tf.float32), 2) #[B, S] => [B, S, 1]
-                self.snt_tgt = self.out_tgt * mask ### masked entries are 0
+                mask_tgt = tf.expand_dims(tf.sequence_mask(self.len_tgt, dtype=tf.float32), 2) #[B, S] => [B, S, 1]
+                self.snt_tgt = self.out_tgt * mask_tgt #masked tokens contain 0.0
                 self.snt_tgt = tf.reduce_sum(self.snt_tgt, axis=1) / tf.expand_dims(tf.to_float(self.len_tgt), 1)
             else:
                 sys.stderr.write("error: bad -sim option '{}'\n".format(self.config.sim))
@@ -152,31 +145,49 @@ class Model():
             self.cos_similarity = tf.reduce_sum(tf.nn.l2_normalize(self.snt_src, dim=1) * tf.nn.l2_normalize(self.snt_tgt, dim=1), axis=1) ### +1:similar -1:divergent
 
         with tf.name_scope("align"):
+            self.out_src = tf.concat([output_src_fw, output_src_bw], axis=2)            
+            self.out_tgt = tf.concat([output_tgt_fw, output_tgt_bw], axis=2)
             self.align = tf.map_fn(lambda (x,y): tf.matmul(x,tf.transpose(y)), (self.out_src, self.out_tgt), dtype = tf.float32, name="align")
 
         with tf.name_scope("aggregation"):
-            ###
-            ### for each src (or tgt) word aggregate the errors of reference/predicted alignments to tgt (or src) words
-            ###
-            align_ones_mask = tf.greater(self.align, tf.zeros_like(self.align,dtype=tf.float32))
-            input_ali_mask = tf.equal(self.input_ali, 1.0+tf.zeros_like(self.align,dtype=tf.float32)) ### all to 0.0 when inference (no alignment given)
-            ones_mask = tf.to_float(tf.logical_or(align_ones_mask,input_ali_mask)) ### this is the mask of the words for which i compute the error
+            if self.config.error == 'exp' or self.config.error == 'mse':
+                ###
+                ### for each src (or tgt) word aggregate the errors of reference/predicted alignments to tgt (or src) words
+                ###
+                align_ones_mask = tf.greater(self.align, tf.zeros_like(self.align,dtype=tf.float32))
+                input_ali_mask = tf.equal(self.input_ali, 1.0+tf.zeros_like(self.align,dtype=tf.float32)) ### all to 0.0 when inference (no alignment given)
+                ones_mask = tf.to_float(tf.logical_or(align_ones_mask,input_ali_mask)) ### this is the mask of the words for which i compute the error
 
-            if self.config.error == 'exp':
-                error_ones =  tf.log(1 + tf.exp(self.align * -self.input_ali)) * ones_mask ### do not consider errors of words not predicted aligned or not aligned in the reference
-            elif self.config.error == 'mse':
-                error_ones =  tf.pow(self.align - self.input_ali,2) * ones_mask
+                if self.config.error == 'exp':
+                    error_ones =  tf.log(1 + tf.exp(self.align * -self.input_ali)) * ones_mask ### do not consider errors of words not predicted aligned or not aligned in the reference
+                elif self.config.error == 'mse':
+                    error_ones =  tf.pow(self.align - self.input_ali,2) * ones_mask
+
+                self.error_src = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (tf.transpose(error_ones,[0,2,1]), self.len_tgt), dtype=tf.float32, name="error_src")
+                self.error_tgt = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (error_ones,                       self.len_src), dtype=tf.float32, name="error_tgt")
+
+                #### next lines are only needed for inference (to show aggragation values)
+                pred_ones = self.align * tf.to_float(align_ones_mask) ### matrix that contain the alignment predictions only if positive (aligned pair)
+                # aggr is sum over all predicted aligned
+                self.aggregation_src = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (tf.transpose(pred_ones,[0,2,1]), self.len_tgt), dtype=tf.float32, name="aggregation_src")
+                self.aggregation_tgt = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (pred_ones,                       self.len_src), dtype=tf.float32, name="aggregation_tgt")
+
+            elif self.config.error == 'lse':
+                R = 1.0
+
+                self.input_ali_src = tf.reduce_max(self.input_ali, axis=2) # +1.0 if there is one alignment, -1.0 otherwise
+                self.input_ali_tgt = tf.reduce_max(self.input_ali, axis=1) # +1.0 if there is one alignment, -1.0 otherwise
+
+                self.aggregation_src = tf.divide(tf.log(tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (tf.exp(tf.transpose(self.align,[0,2,1]) * R), self.len_tgt) , dtype=tf.float32)), R, name="aggregation_src")
+                self.aggregation_tgt = tf.divide(tf.log(tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (tf.exp(self.align * R),                       self.len_src) , dtype=tf.float32)), R, name="aggregation_tgt")
+
+                self.error_src = tf.log(1 + tf.exp(self.aggregation_src * self.input_ali_src))
+                self.error_tgt = tf.log(1 + tf.exp(self.aggregation_tgt * self.input_ali_tgt))
+
             else: 
                 sys.stderr.write("error: bad -error option '{}'\n".format(self.config.error))
                 sys.exit()
 
-            self.error_src = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (tf.transpose(error_ones,[0,2,1]), self.len_tgt), dtype=tf.float32, name="error_src")
-            self.error_tgt = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (error_ones,                       self.len_src), dtype=tf.float32, name="error_tgt")
-
-            pred_ones = self.align * tf.to_float(align_ones_mask) ### matrix that contain the alignment predictions only if positive (aligned pair)
-            ### aggr is sum over all predicted aligned
-            self.aggregation_src = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (tf.transpose(pred_ones,[0,2,1]), self.len_tgt), dtype=tf.float32, name="aggregation_src")
-            self.aggregation_tgt = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (pred_ones,                       self.len_src), dtype=tf.float32, name="aggregation_tgt")
 
     def add_loss(self):
         with tf.name_scope("loss"):
