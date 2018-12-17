@@ -151,7 +151,7 @@ class Model():
                 mask = tf.sequence_mask(self.len_tgt, dtype=tf.float32) #[B, S]
                 mask = tf.expand_dims(mask, 2) #[B, S, 1]
                 self.snt_tgt = self.out_tgt * mask + (1-mask) * tf.float32.min
-                self.snt_tgt = tf.reduce_sum(self.snt_tgt, axis=1) / tf.to_float(tf.expand_dims(self.len_tgt,2)
+                self.snt_tgt = tf.reduce_sum(self.snt_tgt, axis=1) / tf.to_float(tf.expand_dims(self.len_tgt,2))
             else:
                 sys.stderr.write("error: bad -sim option '{}'\n".format(self.config.sim))
                 sys.exit()
