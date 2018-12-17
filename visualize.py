@@ -11,7 +11,7 @@ from dataset import minibatches
 
 class Visualize():
 
-    def __init__(self,n_sents,src,tgt,sim,align,aggr_src,aggr_tgt,last_src,last_tgt): 
+    def __init__(self,n_sents,isrc,itgt,src,tgt,sim,align,aggr_src,aggr_tgt,last_src,last_tgt): 
         self.n_sents = n_sents
         self.src = src
         self.tgt = tgt
@@ -26,6 +26,13 @@ class Visualize():
         print('<:::{}:::> cosine sim = {:.4f}'.format(self.n_sents, self.sim))
         source = list(self.src)
         target = list(self.tgt)
+
+        for s in range(len(isrc)):
+            if isrc[s]==0: 
+                src[s] = '@'+src[s]
+        for t in range(len(itgt)):
+            if itgt[t]==0: 
+                tgt[t] = '@'+tgt[t]
 
         max_length_tgt_tokens = max(5,max([len(x) for x in target]))
         A = str(max_length_tgt_tokens+1)
