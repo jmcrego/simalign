@@ -11,7 +11,7 @@ from dataset import minibatches
 
 class Visualize():
 
-    def __init__(self,n_sents,isrc,itgt,src,tgt,sim,align,aggr_src,aggr_tgt,last_src,last_tgt): 
+    def __init__(self,n_sents,isrc,itgt,src,tgt,sim,align,aggr_src,aggr_tgt,last_src,last_tgt,mark_unks=False): 
         self.n_sents = n_sents
         self.isrc = isrc
         self.itgt = itgt
@@ -24,17 +24,19 @@ class Visualize():
         self.last_src = last_src
         self.last_tgt = last_tgt
 
+        if mark_unks:
+            for s in range(len(self.isrc)):
+                if self.isrc[s]==0: 
+                    self.src[s] = '<['+self.src[s]+']>'
+            for t in range(len(self.itgt)):
+                if self.itgt[t]==0: 
+                    self.tgt[t] = '<['+self.tgt[t]+']>'
+
+
     def print_matrix(self):
         print('<:::{}:::> cosine sim = {:.4f}'.format(self.n_sents, self.sim))
         source = list(self.src)
         target = list(self.tgt)
-
-        for s in range(len(self.isrc)):
-            if self.isrc[s]==0: 
-                source[s] = '<['+source[s]+']>'
-        for t in range(len(self.itgt)):
-            if self.itgt[t]==0: 
-                target[t] = '<['+target[t]+']>'
 
         max_length_tgt_tokens = max(5,max([len(x) for x in target]))
         A = str(max_length_tgt_tokens+1)

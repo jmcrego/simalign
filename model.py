@@ -355,7 +355,7 @@ class Model():
 
             for i_sent in range(len(align_batch)):
                 n_sents += 1
-                v = Visualize(n_sents,src_batch[i_sent],tgt_batch[i_sent],raw_src_batch[i_sent],raw_tgt_batch[i_sent],sim_batch[i_sent],align_batch[i_sent],aggr_src_batch[i_sent],aggr_tgt_batch[i_sent],snt_src_batch[i_sent],snt_tgt_batch[i_sent])
+                v = Visualize(n_sents,src_batch[i_sent],tgt_batch[i_sent],raw_src_batch[i_sent],raw_tgt_batch[i_sent],sim_batch[i_sent],align_batch[i_sent],aggr_src_batch[i_sent],aggr_tgt_batch[i_sent],snt_src_batch[i_sent],snt_tgt_batch[i_sent],self.config.mark_unks)
                 if self.config.show_svg: v.print_svg()
                 elif self.config.show_matrix: v.print_matrix()
                 else: v.print_vectors(self.config.show_sim,self.config.show_align)

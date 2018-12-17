@@ -58,6 +58,7 @@ class Config():
    -show_align         : output source/target alignment matrix
    -show_sim           : output source/target similarity vectors
    -show_svg           : output alignment matrix using svg-like html format
+   -mark_unks          : mark OOVs 
 
 + Options marked with * must be set. The rest have default values.
 + If -mdir exists in learning mode, learning continues after restoring the last model
@@ -106,6 +107,7 @@ class Config():
         self.seed = 1234
         self.report_every = 100
         self.debug = False
+        self.mark_unks = False
         self.error = "mse"
         self.aggr = "sum"
         self.sim = "last"
@@ -314,6 +316,8 @@ class Config():
                 self.show_sim = True
             elif (tok=="-show_align"):
                 self.show_align = True
+            elif (tok=="-mark_unks"):
+                self.mark_unks = True
 
             elif (tok=="-h"):
                 sys.stderr.write("{}".format(self.usage))
