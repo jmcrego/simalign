@@ -70,14 +70,9 @@ class Model():
         self.len_tgt    = tf.placeholder(tf.int32, shape=[None], name="len_tgt")
         self.lr         = tf.placeholder(tf.float32, shape=[], name="lr")
 
-#        n_pairs = 1.0 + tf.count_nonzero(self.input_ali, dtype=tf.float32)
-#        n_ones = 1.0 + tf.count_nonzero(tf.equal(self.input_ali,tf.zeros(tf.shape(self.input_ali))+1.0), dtype=tf.float32)
-#        self.scale = n_pairs / n_ones
-
     def add_model(self):
         BS = tf.shape(self.input_src)[0] #batch size
         KEEP = 1.0-self.config.dropout   # keep probability for embeddings dropout Ex: 0.7
-#        print("KEEP={}".format(KEEP))
 
         ###
         ### src-side
@@ -194,35 +189,12 @@ class Model():
             self.aggregation_src = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (tf.transpose(pred_ones,[0,2,1]), self.len_tgt), dtype=tf.float32, name="aggregation_src")
             self.aggregation_tgt = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (pred_ones,                       self.len_src), dtype=tf.float32, name="aggregation_tgt")
 
-
-#            if self.config.aggr == 'sum':
-#                self.aggregation_src = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (tf.transpose(error_ones,[0,2,1]), self.len_tgt), dtype=tf.float32, name="aggregation_src")
-#                self.aggregation_tgt = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (error_ones,                       self.len_src), dtype=tf.float32, name="aggregation_tgt")
-#            elif self.config.aggr == 'lse':
-#                R = 1.0
-#                self.aggregation_src = tf.divide(tf.log(tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (tf.exp(tf.transpose(self.error_ones,[0,2,1]) * R), self.len_tgt), dtype=tf.float32)), R, name="aggregation_src")
-#                self.aggregation_tgt = tf.divide(tf.log(tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (tf.exp(self.error_ones * R),                       self.len_src), dtype=tf.float32)), R, name="aggregation_tgt")
-#            else: 
-#                sys.stderr.write("error: bad -aggr option '{}'\n".format(self.config.aggr))
-#                sys.exit()
-
     def add_loss(self):
         with tf.name_scope("loss"):
 
             self.loss_src = tf.reduce_mean(tf.map_fn(lambda (x,l): tf.reduce_sum(x[:l]), (self.error_src, self.len_src), dtype=tf.float32))
             self.loss_tgt = tf.reduce_mean(tf.map_fn(lambda (x,l): tf.reduce_sum(x[:l]), (self.error_tgt, self.len_tgt), dtype=tf.float32))
             self.loss = self.loss_tgt + self.loss_src
-
-#            if self.config.mode == 'mse' or self.config.mode == 'exp':
-#                if self.config.mode == 'mse': 
-#                    self.error = tf.pow(self.align - self.input_ali, 2) ### mean squared error of alignment pairs
-#                elif self.config.mode == 'exp': 
-#                    self.error = tf.log(1 + tf.exp(self.align * -self.input_ali)) ### LogExp error of alignment pairs
-#                ### scale errors of aligned pairs (input_ali==1.0)
-#                self.error = tf.where(tf.equal(self.input_ali,1.0), self.error*self.scale, self.error)            
-#                ### loss as average of individual errors
-#                self.loss = tf.reduce_sum(self.error) / tf.count_nonzero(self.input_ali, dtype = tf.float32)
-#            elif self.config.mode == 'agg': 
 
     def add_train(self):
         if   self.config.lr_method == 'adam':     optimizer = tf.train.AdamOptimizer() #self.lr)
@@ -282,18 +254,7 @@ class Model():
         ini_time = time.time()
         for iter, (src_batch, tgt_batch, ali_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(train, self.config.batch_size)):
             fd = self.get_feed_dict(src_batch, tgt_batch, ali_batch, len_src_batch, len_tgt_batch, lr)
-#            print("raw_src_batch is \n{}".format(raw_src_batch))
-#            print("raw_tgt_batch is \n{}".format(raw_tgt_batch))
-#            print("src_batch is \n{}".format(src_batch))
-#            print("tgt_batch is \n{}".format(tgt_batch))
-#            print("ali_batch is \n{}".format(ali_batch))
-#            print("len_src_batch is \n{}".format(len_src_batch))
-#            print("len_tgt_batch is \n{}".format(len_tgt_batch))
             _, loss, align = self.sess.run([self.train_op, self.loss, self.align], feed_dict=fd)
-#            print("align is \n{}".format(align))
-#            print("error is \n{}".format(error))
-#            print("loss is \n{}".format(loss))
-#            sys.exit()
             tscore.add_batch(align, ali_batch)
             iscore.add_batch(align, ali_batch)
             TLOSS += loss
@@ -389,13 +350,15 @@ class Model():
             fd = self.get_feed_dict(src_batch, tgt_batch, ali_batch, len_src_batch, len_tgt_batch, 0.0)
 
             align_batch, snt_src_batch, snt_tgt_batch, sim_batch, aggr_src_batch, aggr_tgt_batch = self.sess.run([self.align, self.snt_src, self.snt_tgt, self.cos_similarity, self.aggregation_src, self.aggregation_tgt], feed_dict=fd)
-            #print("snt_src_batch is {}".format(np.shape(snt_src_batch)))
             if tst.annotated: 
                 score.add_batch(align_batch, ali_batch)
 
             for i_sent in range(len(align_batch)):
                 n_sents += 1
+                n_unk_src = np.sum([s==idx_unk for s in src_batch[i_sent]])
+                n_unk_tgt = np.sum([s==idx_unk for t in tgt_batch[i_sent]])
                 v = Visualize(n_sents,raw_src_batch[i_sent],raw_tgt_batch[i_sent],sim_batch[i_sent],align_batch[i_sent],aggr_src_batch[i_sent],aggr_tgt_batch[i_sent],snt_src_batch[i_sent],snt_tgt_batch[i_sent])
+                print("sunk={} tunk={}".format(n_unk_src,n_unk_tgt))
                 if self.config.show_svg: v.print_svg()
                 elif self.config.show_matrix: v.print_matrix()
                 else: v.print_vectors(self.config.show_sim,self.config.show_align)
