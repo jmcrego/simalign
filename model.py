@@ -103,12 +103,15 @@ class Model():
             if self.config.sim == 'last':
                 self.snt_src = tf.concat([last_src_fw[1], last_src_bw[1]], axis=1)
             elif self.config.sim == 'max':
-                mask = tf.sequence_mask(self.len_src, dtype=tf.float32)
-                mask = tf.expand_dims(mask, 2)
+                mask = tf.sequence_mask(self.len_src, dtype=tf.float32) #[B, S]
+                mask = tf.expand_dims(mask, 2) #[B, S, 1]
                 self.snt_src = self.out_src * mask + (1-mask) * tf.float32.min
                 self.snt_src = tf.reduce_max(self.snt_src, axis=1)
             elif self.config.sim == 'mean':
-                self.snt_src = tf.reduce_sum(self.out_src, axis=1) / self.len_src
+                mask = tf.sequence_mask(self.len_src, dtype=tf.float32) #[B, S]
+                mask = tf.expand_dims(mask, 2) #[B, S, 1]
+                self.snt_src = self.out_src * mask + (1-mask) * tf.float32.min
+                self.snt_src = tf.reduce_sum(self.snt_src, axis=1) / tf.float32(self.len_src)
             else:
                 sys.stderr.write("error: bad -sim option '{}'\n".format(self.config.sim))
                 sys.exit()
@@ -145,7 +148,10 @@ class Model():
                 self.snt_tgt = self.out_tgt * mask + (1-mask) * tf.float32.min
                 self.snt_tgt = tf.reduce_max(self.snt_tgt, axis=1)
             elif self.config.sim == 'mean':
-                self.snt_tgt = tf.reduce_mean(tf.map_fn(lambda (x,l): tf.reduce_sum(x[:l]), (self.out_tgt, self.len_tgt), dtype=tf.float32))
+                mask = tf.sequence_mask(self.len_tgt, dtype=tf.float32) #[B, S]
+                mask = tf.expand_dims(mask, 2) #[B, S, 1]
+                self.snt_tgt = self.out_tgt * mask + (1-mask) * tf.float32.min
+                self.snt_tgt = tf.reduce_sum(self.snt_tgt, axis=1) / tf.float32(self.len_tgt)
             else:
                 sys.stderr.write("error: bad -sim option '{}'\n".format(self.config.sim))
                 sys.exit()
