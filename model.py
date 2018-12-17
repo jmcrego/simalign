@@ -107,7 +107,7 @@ class Model():
                 mask = tf.expand_dims(mask, 2) #[B, S, 1]
                 self.snt_src = self.out_src * mask + (1-mask) * tf.float32.min
                 self.snt_src = tf.reduce_max(self.snt_src, axis=1)
-                self.snt_src = tf.squeeze(self.snt_src, axis=1)
+#                self.snt_src = tf.squeeze(self.snt_src, axis=1)
             elif self.config.sim == 'mean':
                 mask = tf.sequence_mask(self.len_src, dtype=tf.float32) #[B, S]
                 mask = tf.expand_dims(mask, 2) #[B, S, 1]
@@ -148,7 +148,7 @@ class Model():
                 mask = tf.expand_dims(mask, 2) 
                 self.snt_tgt = self.out_tgt * mask + (1-mask) * tf.float32.min 
                 self.snt_tgt = tf.reduce_max(self.snt_tgt, axis=1) #[B, 1, H]
-                self.snt_tgt = tf.squeeze(self.snt_tgt, axis=1)
+#                self.snt_tgt = tf.squeeze(self.snt_tgt, axis=1)
             elif self.config.sim == 'mean':
                 mask = tf.sequence_mask(self.len_tgt, dtype=tf.float32) #[B, S]
                 mask = tf.expand_dims(mask, 2) #[B, S, 1]
@@ -389,6 +389,7 @@ class Model():
             fd = self.get_feed_dict(src_batch, tgt_batch, ali_batch, len_src_batch, len_tgt_batch, 0.0)
 
             align_batch, snt_src_batch, snt_tgt_batch, sim_batch, aggr_src_batch, aggr_tgt_batch = self.sess.run([self.align, self.snt_src, self.snt_tgt, self.cos_similarity, self.aggregation_src, self.aggregation_tgt], feed_dict=fd)
+            print("snt_src_batch is {}".format(np.shape(snt_src_batch)))
             if tst.annotated: 
                 score.add_batch(align_batch, ali_batch)
 
