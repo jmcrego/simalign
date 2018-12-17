@@ -54,15 +54,16 @@ class Config():
  [INFERENCE OPTIONS]
 *  -epoch          INT : epoch to use ([mdir]/epoch[epoch] must exist)
 *  -tst           FILE : testing data
+   -sim            SIM : one of these: last, mean, max [last]
    -show_matrix        : output formatted alignment matrix
    -show_svg           : output alignment matrix using svg-like html format
    -show_align         : output source/target alignment matrix
-   -show_last          : output source/target last vectors
+   -show_sim           : output source/target similarity vectors
 
 + Options marked with * must be set. The rest have default values.
 + If -mdir exists in learning mode, learning continues after restoring the last model
 + Training data is shuffled at every epoch
-+ -show_last, -show_align can be used at the same time
++ -show_sim, -show_align can be used at the same time
 """.format(sys.argv.pop(0))
 
         self.src_voc = None
@@ -108,10 +109,11 @@ class Config():
         self.debug = False
         self.error = "exp"
         self.aggr = "sum"
+        self.sim = "last"
 
         self.show_matrix = False
         self.show_svg = False
-        self.show_last = False
+        self.show_sim = False
         self.show_align = False
 
         self.parse(sys.argv)
@@ -302,12 +304,15 @@ class Config():
             elif (tok=="-aggr" and len(argv)):
                 self.aggr = argv.pop(0)
 
+            elif (tok=="-sim" and len(argv)):
+                self.sim = argv.pop(0)
+
             elif (tok=="-show_matrix"):
                 self.show_matrix = True
             elif (tok=="-show_svg"):
                 self.show_svg = True
-            elif (tok=="-show_last"):
-                self.show_last = True
+            elif (tok=="-show_sim"):
+                self.show_sim = True
             elif (tok=="-show_align"):
                 self.show_align = True
 

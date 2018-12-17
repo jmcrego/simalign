@@ -96,15 +96,19 @@ class Model():
             cell_fw = tf.contrib.rnn.LSTMCell(L1, state_is_tuple=True)
             cell_bw = tf.contrib.rnn.LSTMCell(L1, state_is_tuple=True)
             (output_src_fw, output_src_bw), (last_src_fw, last_src_bw) = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, self.embed_src, sequence_length=self.len_src, dtype=tf.float32)
-#            output_src_fw = tf.nn.l2_normalize(output_src_fw,dim=1)
-#            output_src_bw = tf.nn.l2_normalize(output_src_bw,dim=1)
-
-        ### divergence
-        self.last_src = tf.concat([last_src_fw[1], last_src_bw[1]], axis=1)
-        self.last_src = tf.nn.dropout(self.last_src, keep_prob=KEEP)
-        ### alignment
-        self.out_src = tf.concat([output_src_fw, output_src_bw], axis=2)
-        self.out_src = tf.nn.dropout(self.out_src, keep_prob=KEEP)
+            ### for alignment
+            self.out_src = tf.concat([output_src_fw, output_src_bw], axis=2)
+            self.out_src = tf.nn.dropout(self.out_src, keep_prob=KEEP)
+            ### for sentence similarity
+            if self.config.sim == 'last':
+                self.snt_src = tf.concat([last_src_fw[1], last_src_bw[1]], axis=1)
+            elif self.config.sim == 'max':
+                self.snt_src = tf.reduce_max(self.out_src, axis=1)
+            elif self.config.sim == 'mean':
+                self.snt_src = tf.reduce_mean(self.out_src, axis=1)
+            else:
+                sys.stderr.write("error: bad -sim option '{}'\n".format(self.config.sim))
+                sys.exit()
 
 #        sys.stderr.write("Total src parameters: {}\n".format(sum(variable.get_shape().num_elements() for variable in tf.trainable_variables())))
 
@@ -125,22 +129,27 @@ class Model():
             cell_fw = tf.contrib.rnn.LSTMCell(L1, state_is_tuple=True)
             cell_bw = tf.contrib.rnn.LSTMCell(L1, state_is_tuple=True)
             (output_tgt_fw, output_tgt_bw), (last_tgt_fw, last_tgt_bw) = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, self.embed_tgt, sequence_length=self.len_tgt, dtype=tf.float32)
-#            output_tgt_fw = tf.nn.l2_normalize(output_tgt_fw,dim=1)
-#            output_tgt_bw = tf.nn.l2_normalize(output_tgt_bw,dim=1)
-
-        ### divergence
-        self.last_tgt = tf.concat([last_tgt_fw[1], last_tgt_bw[1]], axis=1)                
-        self.last_tgt = tf.nn.dropout(self.last_tgt, keep_prob=KEEP)
-        ### alignment
-        self.out_tgt = tf.concat([output_tgt_fw, output_tgt_bw], axis=2)
-        self.out_tgt = tf.nn.dropout(self.out_tgt, keep_prob=KEEP)
+            ### for alignment
+            self.out_tgt = tf.concat([output_tgt_fw, output_tgt_bw], axis=2)
+            self.out_tgt = tf.nn.dropout(self.out_tgt, keep_prob=KEEP)
+            ### for sentence similarity
+            if self.config.sim == 'last':
+                self.snt_tgt = tf.concat([last_tgt_fw[1], last_tgt_bw[1]], axis=1)
+            elif self.config.sim == 'max':
+                self.snt_tgt = tf.reduce_max(self.out_tgt, axis=1)
+            elif self.config.sim == 'mean':
+                self.snt_tgt = tf.reduce_mean(self.out_tgt, axis=1)
+            else:
+                sys.stderr.write("error: bad -sim option '{}'\n".format(self.config.sim))
+                sys.exit()
 
 #        sys.stderr.write("Total src/tgt parameters: {}\n".format(sum(variable.get_shape().num_elements() for variable in tf.trainable_variables())))
 #        for variable in tf.trainable_variables():
 #            sys.stderr.write("var {} params={}\n".format(variable,variable.get_shape().num_elements()))
 
-        # next is a tensor containing similarity distances (one for each sentence pair) using the last vectors
-        self.cos_similarity = tf.reduce_sum(tf.nn.l2_normalize(self.last_src, dim=1) * tf.nn.l2_normalize(self.last_tgt, dim=1), axis=1) ### +1:similar -1:divergent
+        with tf.name_scope("similarity"):
+            # next is a tensor containing similarity distances (one for each sentence pair) using the last vectors
+            self.cos_similarity = tf.reduce_sum(tf.nn.l2_normalize(self.snt_src, dim=1) * tf.nn.l2_normalize(self.snt_tgt, dim=1), axis=1) ### +1:similar -1:divergent
 
         with tf.name_scope("align"):
             self.align = tf.map_fn(lambda (x,y): tf.matmul(x,tf.transpose(y)), (self.out_src, self.out_tgt), dtype = tf.float32, name="align")
@@ -200,7 +209,7 @@ class Model():
 #            elif self.config.mode == 'agg': 
 
     def add_train(self):
-        if   self.config.lr_method == 'adam':     optimizer = tf.train.AdamOptimizer(self.lr)
+        if   self.config.lr_method == 'adam':     optimizer = tf.train.AdamOptimizer() #self.lr)
         elif self.config.lr_method == 'adagrad':  optimizer = tf.train.AdagradOptimizer(self.lr)
         elif self.config.lr_method == 'sgd':      optimizer = tf.train.GradientDescentOptimizer(self.lr)
         elif self.config.lr_method == 'rmsprop':  optimizer = tf.train.RMSPropOptimizer(self.lr)
@@ -363,16 +372,16 @@ class Model():
         for iter, (src_batch, tgt_batch, ali_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(tst, self.config.batch_size)):
             fd = self.get_feed_dict(src_batch, tgt_batch, ali_batch, len_src_batch, len_tgt_batch, 0.0)
 
-            align_batch, last_src_batch, last_tgt_batch, sim_batch, aggr_src_batch, aggr_tgt_batch = self.sess.run([self.align, self.last_src, self.last_tgt, self.cos_similarity, self.aggregation_src, self.aggregation_tgt], feed_dict=fd)
+            align_batch, snt_src_batch, snt_tgt_batch, sim_batch, aggr_src_batch, aggr_tgt_batch = self.sess.run([self.align, self.snt_src, self.snt_tgt, self.cos_similarity, self.aggregation_src, self.aggregation_tgt], feed_dict=fd)
             if tst.annotated: 
                 score.add_batch(align_batch, ali_batch)
 
             for i_sent in range(len(align_batch)):
                 n_sents += 1
-                v = Visualize(n_sents,raw_src_batch[i_sent],raw_tgt_batch[i_sent],sim_batch[i_sent],align_batch[i_sent],aggr_src_batch[i_sent],aggr_tgt_batch[i_sent],last_src_batch[i_sent],last_tgt_batch[i_sent])
+                v = Visualize(n_sents,raw_src_batch[i_sent],raw_tgt_batch[i_sent],sim_batch[i_sent],align_batch[i_sent],aggr_src_batch[i_sent],aggr_tgt_batch[i_sent],snt_src_batch[i_sent],snt_tgt_batch[i_sent])
                 if self.config.show_svg: v.print_svg()
                 elif self.config.show_matrix: v.print_matrix()
-                else: v.print_vectors(self.config.show_last,self.config.show_align)
+                else: v.print_vectors(self.config.show_sim,self.config.show_align)
 
         if tst.annotated:
             score.summarize()
