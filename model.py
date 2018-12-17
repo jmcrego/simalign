@@ -70,6 +70,9 @@ class Model():
         self.len_tgt    = tf.placeholder(tf.int32, shape=[None], name="len_tgt")
         self.lr         = tf.placeholder(tf.float32, shape=[], name="lr")
 
+        self.input_ali_src = tf.reduce_max(self.input_ali, axis=1) # +1.0 if there is one alignment, -1 otherwise
+        self.input_ali_tgt = tf.reduce_max(self.input_ali, axis=2) # +1.0 if there is one alignment, -1 otherwise
+
     def add_model(self):
         BS = tf.shape(self.input_src)[0] #batch size
         KEEP = 1.0-self.config.dropout   # keep probability for embeddings dropout Ex: 0.7
@@ -94,23 +97,6 @@ class Model():
             ### for alignment
             self.out_src = tf.concat([output_src_fw, output_src_bw], axis=2)
             self.out_src = tf.nn.dropout(self.out_src, keep_prob=KEEP)
-            ### for sentence similarity
-            if self.config.sim == 'last':
-                self.snt_src = tf.concat([last_src_fw[1], last_src_bw[1]], axis=1)
-            elif self.config.sim == 'max':
-                mask = tf.sequence_mask(self.len_src, dtype=tf.float32) #[B, S]
-                mask = tf.expand_dims(mask, 2) #[B, S, 1]
-                self.snt_src = self.out_src * mask + (1-mask) * tf.float32.min ### masked entries are -Inf
-                self.snt_src = tf.reduce_max(self.snt_src, axis=1) #[B, H]
-#                self.snt_src = tf.squeeze(self.snt_src, axis=1)
-            elif self.config.sim == 'mean':
-                mask = tf.sequence_mask(self.len_src, dtype=tf.float32) #[B, S]
-                mask = tf.expand_dims(mask, 2) #[B, S, 1]
-                self.snt_src = self.out_src * mask ### masked entries are 0
-                self.snt_src = tf.reduce_sum(self.snt_src, axis=1) / tf.expand_dims(tf.to_float(self.len_src), 1)
-            else:
-                sys.stderr.write("error: bad -sim option '{}'\n".format(self.config.sim))
-                sys.exit()
 
 
 #        sys.stderr.write("Total src parameters: {}\n".format(sum(variable.get_shape().num_elements() for variable in tf.trainable_variables())))
@@ -135,30 +121,33 @@ class Model():
             ### for alignment
             self.out_tgt = tf.concat([output_tgt_fw, output_tgt_bw], axis=2)
             self.out_tgt = tf.nn.dropout(self.out_tgt, keep_prob=KEEP)
-            ### for sentence similarity
-            if self.config.sim == 'last':
-                self.snt_tgt = tf.concat([last_tgt_fw[1], last_tgt_bw[1]], axis=1)
-            elif self.config.sim == 'max':
-                mask = tf.sequence_mask(self.len_tgt, dtype=tf.float32) ## 1s if in length, 0s otherwise
-                mask = tf.expand_dims(mask, 2) 
-                self.snt_tgt = self.out_tgt * mask + (1-mask) * tf.float32.min ### masked entries are -Inf
-                self.snt_tgt = tf.reduce_max(self.snt_tgt, axis=1) #[B, H]
-#                self.snt_tgt = tf.squeeze(self.snt_tgt, axis=1)
-            elif self.config.sim == 'mean':
-                mask = tf.sequence_mask(self.len_tgt, dtype=tf.float32) #[B, S]
-                mask = tf.expand_dims(mask, 2) #[B, S, 1]
-                self.snt_tgt = self.out_tgt * mask ### masked entries are 0
-                self.snt_tgt = tf.reduce_sum(self.snt_tgt, axis=1) / tf.expand_dims(tf.to_float(self.len_tgt), 1)
-            else:
-                sys.stderr.write("error: bad -sim option '{}'\n".format(self.config.sim))
-                sys.exit()
-
 
 #        sys.stderr.write("Total src/tgt parameters: {}\n".format(sum(variable.get_shape().num_elements() for variable in tf.trainable_variables())))
 #        for variable in tf.trainable_variables():
 #            sys.stderr.write("var {} params={}\n".format(variable,variable.get_shape().num_elements()))
 
         with tf.name_scope("similarity"):
+            ### for sentence similarity
+            if self.config.sim == 'last':
+                self.snt_src = tf.concat([last_src_fw[1], last_src_bw[1]], axis=1)
+                self.snt_tgt = tf.concat([last_tgt_fw[1], last_tgt_bw[1]], axis=1)
+            elif self.config.sim == 'max':
+                mask = tf.expand_dims(tf.sequence_mask(self.len_src, dtype=tf.float32), 2) #[B, S] => [B, S, 1]
+                self.snt_src = self.out_src * mask + (1-mask) * tf.float32.min 
+                self.snt_src = tf.reduce_max(self.snt_src, axis=1) #[B, H]
+                mask = tf.expand_dims(tf.sequence_mask(self.len_tgt, dtype=tf.float32), 2) #[B, S] => [B, S, 1]
+                self.snt_tgt = self.out_tgt * mask + (1-mask) * tf.float32.min 
+                self.snt_tgt = tf.reduce_max(self.snt_tgt, axis=1) #[B, H]
+            elif self.config.sim == 'mean':
+                mask = tf.expand_dims(tf.sequence_mask(self.len_src, dtype=tf.float32), 2) #[B, S] => [B, S, 1]
+                self.snt_src = self.out_src * mask ### masked entries are 0
+                self.snt_src = tf.reduce_sum(self.snt_src, axis=1) / tf.expand_dims(tf.to_float(self.len_src), 1)
+                mask = tf.expand_dims(tf.sequence_mask(self.len_tgt, dtype=tf.float32), 2) #[B, S] => [B, S, 1]
+                self.snt_tgt = self.out_tgt * mask ### masked entries are 0
+                self.snt_tgt = tf.reduce_sum(self.snt_tgt, axis=1) / tf.expand_dims(tf.to_float(self.len_tgt), 1)
+            else:
+                sys.stderr.write("error: bad -sim option '{}'\n".format(self.config.sim))
+                sys.exit()
             # next is a tensor containing similarity distances (one for each sentence pair) using the last vectors
             self.cos_similarity = tf.reduce_sum(tf.nn.l2_normalize(self.snt_src, dim=1) * tf.nn.l2_normalize(self.snt_tgt, dim=1), axis=1) ### +1:similar -1:divergent
 
