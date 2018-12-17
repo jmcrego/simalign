@@ -13,6 +13,8 @@ class Visualize():
 
     def __init__(self,n_sents,isrc,itgt,src,tgt,sim,align,aggr_src,aggr_tgt,last_src,last_tgt): 
         self.n_sents = n_sents
+        self.isrc = isrc
+        self.itgt = itgt
         self.src = src
         self.tgt = tgt
         self.sim = sim
