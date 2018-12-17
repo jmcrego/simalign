@@ -98,7 +98,7 @@ class Vocab():
 
 class Dataset():
 
-    def __init__(self, file, voc_src, voc_tgt, seq_size, max_sents, p_unpair, p_swap, p_remove, p_extend, p_replace, do_shuffle):
+    def __init__(self, file, voc_src, voc_tgt, seq_size, max_sents, p_unpair, p_delete, p_extend, p_replace, do_shuffle):
         if file is None: return None
         self.voc_src = voc_src 
         self.voc_tgt = voc_tgt 
@@ -108,8 +108,7 @@ class Dataset():
         self.do_shuffle = do_shuffle
         self.annotated = False
         self.p_unpair = p_unpair
-        self.p_swap = p_swap
-        self.p_remove = p_remove
+        self.p_delete = p_delete
         self.p_extend = p_extend
         self.p_replace = p_replace
         self.data = []
@@ -187,6 +186,59 @@ class Dataset():
                 return src, tgt, ali
         return [], [], []
 
+    def get_delete_example(self, index):
+        (src, tgt, ali) = self.data[index]
+        # to replace, sentences must be at least 10 words
+        if len(src) < 10 or len(tgt) < 10: return [], [], []
+        n_rep = 0
+        while True:
+            n_rep += 1
+            if n_rep > self.max_rep: break
+    
+            if random.random() < 0.5: #delete in src
+                ini = int(random.random() * len(src)) 
+                l = int(random.random() * (len(src)-ini-1)) + 1
+                end = ini + l
+                src2 = src[0:ini] + src[end:-1]
+                ali2 = []
+                for a in ali:
+                    if len(a.split('-')) != 2:
+                        sys.stderr.write('warning: bad alignment: {}\n'.format(a))
+                        continue
+                    s, t = map(int, a.split('-'))
+                    if s >= len(src):
+                        sys.stderr.write('warning: src alignment: {} out of bounds: {}\n'.format(s, src))
+                        continue
+                    if t >= len(tgt):
+                        sys.stderr.write('warning: tgt alignment: {} out of bounds: {}\n'.format(t, tgt))
+                        continue
+                    if (s<ini or s>=end): ali2.append("{}-{}".format(s,t))
+                return src2, tgt, ali2
+
+            else: #delete in tgt
+                ini = int(random.random() * len(tgt)) 
+                l = int(random.random() * (len(tgt)-ini-1)) + 1
+                end = ini + l
+                tgt2 = tgt[0:ini] + tgt[end:-1]
+                ali2 = []
+                for a in ali:
+                    if len(a.split('-')) != 2:
+                        sys.stderr.write('warning: bad alignment: {}\n'.format(a))
+                        continue
+                    s, t = map(int, a.split('-'))
+                    if s >= len(src):
+                        sys.stderr.write('warning: src alignment: {} out of bounds: {}\n'.format(s, src))
+                        continue
+                    if t >= len(tgt):
+                        sys.stderr.write('warning: tgt alignment: {} out of bounds: {}\n'.format(t, tgt))
+                        continue
+                    if (t<ini or t>=end): ali2.append("{}-{}".format(s,t))
+                return src, tgt2, ali2
+
+        return [], [], []
+
+
+
     def get_replace_example(self, index):
         (src, tgt, ali) = self.data[index]
         # to replace, sentences must be at least 10 words
@@ -248,48 +300,6 @@ class Dataset():
 
         return [], [], []
 
-    def get_swap_example(self, index):
-        (src, tgt, ali) = self.data[index]
-        # to swap, sentences must be at least 10 words
-        if len(src) < 10: return [], [], []
-
-        min_t = [-1] * len(src) #min target word aligned to source s
-        max_t = [-1] * len(src) #max target word aligned to source s
-        for a in ali:
-            if len(a.split('-')) != 2:
-                sys.stderr.write('warning: bad alignment: {}\n'.format(a))
-                continue
-            s, t = map(int, a.split('-'))
-            if s >= len(src):
-                sys.stderr.write('warning: src alignment: {} out of bounds\n'.format(s))
-                continue
-            if t >= len(tgt):
-                sys.stderr.write('warning: tgt alignment: {} out of bounds\n'.format(t))
-                continue
-            if min_t[s] == -1 or t < min_t[s]: min_t[s] = t
-            if max_t[s] == -1 or t > max_t[s]: max_t[s] = t
-
-        mid = len(src)/2
-        points = range(mid-3,mid+3)
-        shuffle(points)
-        for p in points:
-            max_t_p = max(max_t[:p]) ### maximum target word t aligned to source words [:p] --> [0,p-1]
-            min_t_p = min(min_t[p:]) ### minimum target word t aligned to source words [p:] --> [p,len(s)-1]
-            if min_t_p > max_t_p: 
-                ### swap src words and alignments
-                ### s1 s2 s3 s4 s5 s6 =(p=4)=> s4 s5 s6 s1 s2 s3
-                src2 = []
-                for s in range(p,len(src)): src2.append(src[s])            
-                for s in range(0,p): src2.append(src[s])            
-                ali2 = []
-                for a in ali:
-                    s, t = map(int, a.split('-'))
-                    if s>=p: s = s-p
-                    else: s = s + len(src) - p
-                    ali2.append("{}-{}".format(s,t))
-                return src2, tgt, ali2
-
-        return [], [], []
 
     def __iter__(self):
         nsent = 0
@@ -301,8 +311,7 @@ class Dataset():
         self.nlnks = 0
         self.npair = 0
         self.nunpair = 0
-        self.nswap = 0
-        self.nremove = 0
+        self.ndelete = 0
         self.nreplace = 0
         self.nextend = 0
         ### every iteration i get shuffled data examples if do_shuffle
@@ -329,21 +338,13 @@ class Dataset():
                     (src, tgt, ali) = self.get_extend_example(index)
                     if len(src) and len(tgt): self.nextend += 1
                 ###
-                ### swap
+                ### delete
                 ###
                 pmin = pmax
-                pmax = pmin + self.p_swap
+                pmax = pmin + self.p_delete
                 if p >= pmin and p < pmax: 
-                    (src, tgt, ali) = self.get_swap_example(index)
-                    if len(src) and len(tgt): self.nswap += 1
-                ###
-                ### remove
-                ###
-                pmin = pmax
-                pmax = pmin + self.p_remove
-                if p >= pmin and p < pmax: 
-                    (src, tgt, ali) = self.get_remove_example(index)
-                    if len(src) and len(tgt): self.nremove += 1
+                    (src, tgt, ali) = self.get_delete_example(index)
+                    if len(src) and len(tgt): self.ndelete += 1
                 ###
                 ### replace
                 ###

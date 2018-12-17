@@ -34,18 +34,17 @@ class Config():
    -tgt_lstm_size  INT : hidden units for tgt bi-lstm [256]
 
    -dropout      FLOAT : dropout ratio [0.3]
-   -error       STRING : error function (mse, exp) [exp]
+   -error       STRING : error function (mse, exp) [mse]
    -aggr        STRING : aggregation function (sum, lse) [sum]
    -lr_method   STRING : GD method either: adam, adagrad, adadelta, sgd, rmsprop [adam]
    -lr           FLOAT : initial learning rate [0.001]
    -lr_decay     FLOAT : learning rate decay if lr_method is sgd [0.9]
    -clip         FLOAT : gradient clipping value (0.0 for no clipping) [0.0]
 
-   -p_unpair     FLOAT : probability of unpairing a sentence [0.0]
-   -p_swap       FLOAT : probability of swapping a sentence [0.0]
-   -p_remove     FLOAT : probability of removing a sequence of words in a sentence [0.0]
-   -p_extend     FLOAT : probability of extending a sequence of words in a sentence [0.0]
-   -p_replace    FLOAT : probability of replacing a sequence of words in a sentence [0.0]
+   -p_unpair     FLOAT : probability of unpaired sentences [0.0]
+   -p_delete     FLOAT : probability of sentences with deleted sequences of words [0.0]
+   -p_extend     FLOAT : probability of sentences with extended sequences of words [0.0]
+   -p_replace    FLOAT : probability of sentences with replaced sequences of words [0.0]
 
    -max_sents      INT : Consider this number of sentences per batch (0 for all) [0]
    -n_epochs       INT : train for this number of epochs [1]
@@ -56,9 +55,9 @@ class Config():
 *  -tst           FILE : testing data
    -sim            SIM : one of these: last, mean, max [last]
    -show_matrix        : output formatted alignment matrix
-   -show_svg           : output alignment matrix using svg-like html format
    -show_align         : output source/target alignment matrix
    -show_sim           : output source/target similarity vectors
+   -show_svg           : output alignment matrix using svg-like html format
 
 + Options marked with * must be set. The rest have default values.
 + If -mdir exists in learning mode, learning continues after restoring the last model
@@ -89,7 +88,7 @@ class Config():
 
         self.p_unpair = 0.0
         self.p_swap = 0.0
-        self.p_remove = 0.0
+        self.p_delete = 0.0
         self.p_extend = 0.0
         self.p_replace = 0.0
 
@@ -107,7 +106,7 @@ class Config():
         self.seed = 1234
         self.report_every = 100
         self.debug = False
-        self.error = "exp"
+        self.error = "mse"
         self.aggr = "sum"
         self.sim = "last"
 
@@ -278,8 +277,8 @@ class Config():
                 self.p_unpair = float(argv.pop(0))
             elif (tok=="-p_swap" and len(argv)):
                 self.p_swap = float(argv.pop(0))
-            elif (tok=="-p_remove" and len(argv)):
-                self.p_remove = float(argv.pop(0))
+            elif (tok=="-p_delete" and len(argv)):
+                self.p_delete = float(argv.pop(0))
             elif (tok=="-p_extend" and len(argv)):
                 self.p_extend = float(argv.pop(0))
             elif (tok=="-p_replace" and len(argv)):

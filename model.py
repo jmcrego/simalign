@@ -313,7 +313,7 @@ class Model():
         sys.stderr.write('{} Epoch {} TRAIN loss={:.4f} ({}) lr={:.4f}'.format(curr_time,curr_epoch,TLOSS,tscore.results,lr))
         unk_src = float(100) * train.nunk_src / train.nsrc
         unk_tgt = float(100) * train.nunk_tgt / train.ntgt
-        sys.stderr.write(' Train set: words={}/{} %ones={:.2f} pair={} unpair={} swap={} extend={} replace={} %unk={:.2f}/{:.2f}\n'.format(train.nsrc,train.ntgt,100.0*train.nones/train.nlnks,train.npair,train.nunpair,train.nswap,train.nextend,train.nreplace,unk_src,unk_tgt))
+        sys.stderr.write(' Train set: words={}/{} %ones={:.2f} pair={} unpair={} delete={} extend={} replace={} %unk={:.2f}/{:.2f}\n'.format(train.nsrc,train.ntgt,100.0*train.nones/train.nlnks,train.npair,train.nunpair,train.ndelete,train.nextend,train.nreplace,unk_src,unk_tgt))
 
         ##########################
         # evaluate over devset ###
@@ -335,7 +335,7 @@ class Model():
             sys.stderr.write('{} Epoch {} VALID loss={:.4f} ({})'.format(curr_time,curr_epoch,VLOSS,vscore.results))
             unk_s = float(100) * dev.nunk_src / dev.nsrc
             unk_t = float(100) * dev.nunk_tgt / dev.ntgt
-            sys.stderr.write(' Valid set: words={}/{} %ones={:.2f} pair={} unpair={} swap={} extend={} replace={} %unk={:.2f}/{:.2f}\n'.format(dev.nsrc,dev.ntgt,100.0*dev.nones/dev.nlnks,dev.npair,dev.nunpair,dev.nswap,dev.nextend,dev.nreplace,unk_s,unk_t,VLOSS))
+            sys.stderr.write(' Valid set: words={}/{} %ones={:.2f} pair={} unpair={} delete={} extend={} replace={} %unk={:.2f}/{:.2f}\n'.format(dev.nsrc,dev.ntgt,100.0*dev.nones/dev.nlnks,dev.npair,dev.nunpair,dev.ndelete,dev.nextend,dev.nreplace,unk_s,unk_t,VLOSS))
 
         #################################
         #keep record of current epoch ###
@@ -406,7 +406,7 @@ class Model():
             sys.stderr.write('{} TEST ({})'.format(curr_time,score.results))
             unk_s = float(100) * tst.nunk_src / tst.nsrc
             unk_t = float(100) * tst.nunk_tgt / tst.ntgt
-            sys.stderr.write(' Test set: words={}/{} %ones={:.2f} pair={} unpair={} swap={} extend={} replace={} %unk={:.2f}/{:.2f}\n'.format(tst.nsrc,tst.ntgt,100.0*tst.nones/tst.nlnks,tst.npair,tst.nunpair,tst.nswap,tst.nextend,tst.nreplace,unk_s,unk_t))
+            sys.stderr.write(' Test set: words={}/{} %ones={:.2f} pair={} unpair={} delete={} extend={} replace={} %unk={:.2f}/{:.2f}\n'.format(tst.nsrc,tst.ntgt,100.0*tst.nones/tst.nlnks,tst.npair,tst.nunpair,tst.ndelete,tst.nextend,tst.nreplace,unk_s,unk_t))
 
         if self.config.show_svg: print "</body>\n</html>"
 
