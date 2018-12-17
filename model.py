@@ -138,7 +138,7 @@ class Model():
             if self.config.sim == 'last':
                 self.snt_tgt = tf.concat([last_tgt_fw[1], last_tgt_bw[1]], axis=1)
             elif self.config.sim == 'max':
-                self.snt_tgt = tf.map_fn(lambda (x,l): tf.reduce_max(x[:,:l,:], axis=1), (self.out_tgt, self.len_tgt), dtype=tf.float32)
+                self.snt_tgt = tf.map_fn(lambda (x,l): tf.reduce_max(x[:,:l], axis=1), (self.out_tgt, self.len_tgt), dtype=tf.float32)
             elif self.config.sim == 'mean':
                 self.snt_tgt = tf.reduce_mean(tf.map_fn(lambda (x,l): tf.reduce_sum(x[:l]), (self.out_tgt, self.len_tgt), dtype=tf.float32))
             else:
