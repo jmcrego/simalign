@@ -357,10 +357,10 @@ class Model():
                 n_sents += 1
                 s_unks = []
                 t_unks = []
-                for s in range(src_batch[i_sent]):
+                for s in range(len(src_batch[i_sent])):
                     if src_batch[i]==0:
                         s_unks.append(raw_src_batch[i_sent][s])
-                for t in range(tgt_batch[i_sent]):
+                for t in range(len(tgt_batch[i_sent])):
                     if tgt_batch[i]==0:
                         t_unks.append(raw_tgt_batch[i_sent][t])
 
