@@ -104,13 +104,15 @@ class Model():
                 self.snt_src = tf.concat([last_src_fw[1], last_src_bw[1]], axis=1)
             elif self.config.sim == 'max':
                 mask = tf.sequence_mask(self.len_src, maxlen=tf.shape(self.out_src)[1])
-                self.snt_src = tf.reduce_max(mask * self.out_src, axis=1)
+                self.snt_src = tf.reduce_max(tf.boolean_mask(self.out_src, mask), axis=1)
             elif self.config.sim == 'mean':
                 mask = tf.sequence_mask(self.len_src, maxlen=tf.shape(self.out_src)[1])
                 self.snt_src = tf.reduce_sum(self.out_src, axis=1) / self.len_src
             else:
                 sys.stderr.write("error: bad -sim option '{}'\n".format(self.config.sim))
                 sys.exit()
+
+            self.snt_src = tf.nn.l2_normalize(self.snt_src, dim=1) 
 
 #        sys.stderr.write("Total src parameters: {}\n".format(sum(variable.get_shape().num_elements() for variable in tf.trainable_variables())))
 
@@ -146,6 +148,8 @@ class Model():
             else:
                 sys.stderr.write("error: bad -sim option '{}'\n".format(self.config.sim))
                 sys.exit()
+
+            self.snt_tgt = tf.nn.l2_normalize(self.snt_tgt, dim=1) 
 
 #        sys.stderr.write("Total src/tgt parameters: {}\n".format(sum(variable.get_shape().num_elements() for variable in tf.trainable_variables())))
 #        for variable in tf.trainable_variables():
