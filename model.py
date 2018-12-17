@@ -111,7 +111,7 @@ class Model():
             elif self.config.sim == 'mean':
                 mask = tf.sequence_mask(self.len_src, dtype=tf.float32) #[B, S]
                 mask = tf.expand_dims(mask, 2) #[B, S, 1]
-                self.snt_src = self.out_src * mask * tf.float32.min ### masked entries are 0
+                self.snt_src = self.out_src * mask ### masked entries are 0
                 self.snt_src = tf.reduce_sum(self.snt_src, axis=1) / tf.expand_dims(tf.to_float(self.len_src), 1)
             else:
                 sys.stderr.write("error: bad -sim option '{}'\n".format(self.config.sim))
@@ -152,7 +152,7 @@ class Model():
             elif self.config.sim == 'mean':
                 mask = tf.sequence_mask(self.len_tgt, dtype=tf.float32) #[B, S]
                 mask = tf.expand_dims(mask, 2) #[B, S, 1]
-                self.snt_tgt = self.out_tgt * mask * tf.float32.min ### masked entries are 0
+                self.snt_tgt = self.out_tgt * mask ### masked entries are 0
                 self.snt_tgt = tf.reduce_sum(self.snt_tgt, axis=1) / tf.expand_dims(tf.to_float(self.len_tgt), 1)
             else:
                 sys.stderr.write("error: bad -sim option '{}'\n".format(self.config.sim))
