@@ -363,7 +363,7 @@ class Model():
                     if tgt_batch[i_sent][t]==0: t_unks.append(raw_tgt_batch[i_sent][t])
 
                 v = Visualize(n_sents,raw_src_batch[i_sent],raw_tgt_batch[i_sent],sim_batch[i_sent],align_batch[i_sent],aggr_src_batch[i_sent],aggr_tgt_batch[i_sent],snt_src_batch[i_sent],snt_tgt_batch[i_sent])
-                print("sunk={} tunk={}".format(n_unk_src,n_unk_tgt))
+                print("sunk={} tunk={}".format(s_unks,t_unks))
                 if self.config.show_svg: v.print_svg()
                 elif self.config.show_matrix: v.print_matrix()
                 else: v.print_vectors(self.config.show_sim,self.config.show_align)
