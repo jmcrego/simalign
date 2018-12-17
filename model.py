@@ -103,9 +103,9 @@ class Model():
             if self.config.sim == 'last':
                 self.snt_src = tf.concat([last_src_fw[1], last_src_bw[1]], axis=1)
             elif self.config.sim == 'max':
-                self.snt_src = tf.reduce_max(self.out_src, axis=1)
+                self.snt_src = tf.reduce_max(self.out_src, axis=2)
             elif self.config.sim == 'mean':
-                self.snt_src = tf.reduce_mean(self.out_src, axis=1)
+                self.snt_src = tf.reduce_mean(self.out_src, axis=2)
             else:
                 sys.stderr.write("error: bad -sim option '{}'\n".format(self.config.sim))
                 sys.exit()
@@ -136,9 +136,9 @@ class Model():
             if self.config.sim == 'last':
                 self.snt_tgt = tf.concat([last_tgt_fw[1], last_tgt_bw[1]], axis=1)
             elif self.config.sim == 'max':
-                self.snt_tgt = tf.reduce_max(self.out_tgt, axis=1)
+                self.snt_tgt = tf.reduce_max(self.out_tgt, axis=2)
             elif self.config.sim == 'mean':
-                self.snt_tgt = tf.reduce_mean(self.out_tgt, axis=1)
+                self.snt_tgt = tf.reduce_mean(self.out_tgt, axis=2)
             else:
                 sys.stderr.write("error: bad -sim option '{}'\n".format(self.config.sim))
                 sys.exit()
