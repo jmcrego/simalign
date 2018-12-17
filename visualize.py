@@ -29,12 +29,12 @@ class Visualize():
         source = list(self.src)
         target = list(self.tgt)
 
-        for s in range(len(isrc)):
-            if isrc[s]==0: 
-                src[s] = '@'+src[s]
-        for t in range(len(itgt)):
-            if itgt[t]==0: 
-                tgt[t] = '@'+tgt[t]
+        for s in range(len(self.isrc)):
+            if self.isrc[s]==0: 
+                self.src[s] = '@'+self.src[s]
+        for t in range(len(self.itgt)):
+            if self.itgt[t]==0: 
+                self.tgt[t] = '@'+self.tgt[t]
 
         max_length_tgt_tokens = max(5,max([len(x) for x in target]))
         A = str(max_length_tgt_tokens+1)
