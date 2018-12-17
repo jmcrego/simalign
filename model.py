@@ -112,7 +112,6 @@ class Model():
                 sys.stderr.write("error: bad -sim option '{}'\n".format(self.config.sim))
                 sys.exit()
 
-            self.snt_src = tf.nn.l2_normalize(self.snt_src, dim=1) 
 
 #        sys.stderr.write("Total src parameters: {}\n".format(sum(variable.get_shape().num_elements() for variable in tf.trainable_variables())))
 
@@ -149,7 +148,6 @@ class Model():
                 sys.stderr.write("error: bad -sim option '{}'\n".format(self.config.sim))
                 sys.exit()
 
-            self.snt_tgt = tf.nn.l2_normalize(self.snt_tgt, dim=1) 
 
 #        sys.stderr.write("Total src/tgt parameters: {}\n".format(sum(variable.get_shape().num_elements() for variable in tf.trainable_variables())))
 #        for variable in tf.trainable_variables():
@@ -397,9 +395,7 @@ class Model():
             unk_t = float(100) * tst.nunk_tgt / tst.ntgt
             curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
             sys.stderr.write('{} TEST ({})'.format(curr_time,score.results))
-            sys.stderr.write(' Test set: words={}/{} %ones={:.2f} pair={} unpair={} swap={} extend={} replace={} %unk={:.2f}/{:.2f}\n'.format(tst.nsrc,tst.ntgt,100.0*tst.nones/tst.nlnks,tst.npair,tst.nunpair,tst.nswap,tst.nextend,tst.nreplace,unk_src,unk_tgt,VLOSS))
-
-            sys.stderr.write('TEST words={}/{} %unk={:.2f}/{:.2f} ({})\n'.format(tst.nsrc,tst.ntgt,unk_s,unk_t,score.results))
+            sys.stderr.write(' Test set: words={}/{} %ones={:.2f} pair={} unpair={} swap={} extend={} replace={} %unk={:.2f}/{:.2f}\n'.format(tst.nsrc,tst.ntgt,100.0*tst.nones/tst.nlnks,tst.npair,tst.nunpair,tst.nswap,tst.nextend,tst.nreplace,unk_s,unk_t))
 
         if self.config.show_svg: print "</body>\n</html>"
 
