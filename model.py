@@ -355,8 +355,8 @@ class Model():
 
             for i_sent in range(len(align_batch)):
                 n_sents += 1
-                n_unk_src = np.sum([s==idx_unk for s in src_batch[i_sent]])
-                n_unk_tgt = np.sum([s==idx_unk for t in tgt_batch[i_sent]])
+                n_unk_src = np.sum([s==0 for s in src_batch[i_sent]])
+                n_unk_tgt = np.sum([s==0 for t in tgt_batch[i_sent]])
                 v = Visualize(n_sents,raw_src_batch[i_sent],raw_tgt_batch[i_sent],sim_batch[i_sent],align_batch[i_sent],aggr_src_batch[i_sent],aggr_tgt_batch[i_sent],snt_src_batch[i_sent],snt_tgt_batch[i_sent])
                 print("sunk={} tunk={}".format(n_unk_src,n_unk_tgt))
                 if self.config.show_svg: v.print_svg()
