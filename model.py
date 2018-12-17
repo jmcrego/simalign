@@ -103,8 +103,7 @@ class Model():
             if self.config.sim == 'last':
                 self.snt_src = tf.concat([last_src_fw[1], last_src_bw[1]], axis=1)
             elif self.config.sim == 'max':
-                mask = tf.sequence_mask(self.len_src, maxlen=tf.shape(self.out_src)[1])
-                self.snt_src = tf.reduce_max(tf.boolean_mask(self.out_src, mask), axis=1)
+                self.snt_src = tf.map_fn(lambda (x,l): tf.reduce_max(x[:,:l,:], axis=1), (self.out_src, self.len_src), dtype=tf.float32)
             elif self.config.sim == 'mean':
                 mask = tf.sequence_mask(self.len_src, maxlen=tf.shape(self.out_src)[1])
                 self.snt_src = tf.reduce_sum(self.out_src, axis=1) / self.len_src
@@ -139,11 +138,9 @@ class Model():
             if self.config.sim == 'last':
                 self.snt_tgt = tf.concat([last_tgt_fw[1], last_tgt_bw[1]], axis=1)
             elif self.config.sim == 'max':
-                mask = tf.sequence_mask(self.len_tgt, maxlen=tf.shape(self.out_tgt)[1])
-                self.snt_tgt = tf.reduce_max(mask * self.out_tgt, axis=1)
+                self.snt_tgt = tf.map_fn(lambda (x,l): tf.reduce_max(x[:,:l,:], axis=1), (self.out_tgt, self.len_tgt), dtype=tf.float32)
             elif self.config.sim == 'mean':
-                mask = tf.sequence_mask(self.len_tgt, maxlen=tf.shape(self.out_tgt)[1])
-                self.snt_tgt = tf.reduce_sum(self.out_tgt, axis=1) / self.len_tgt
+                self.snt_tgt = tf.reduce_mean(tf.map_fn(lambda (x,l): tf.reduce_sum(x[:l]), (self.out_tgt, self.len_tgt), dtype=tf.float32))
             else:
                 sys.stderr.write("error: bad -sim option '{}'\n".format(self.config.sim))
                 sys.exit()
@@ -323,9 +320,9 @@ class Model():
             vscore.summarize()
             VLOSS = VLOSS/nbatches
             sys.stderr.write('{} Epoch {} VALID loss={:.4f} ({})'.format(curr_time,curr_epoch,VLOSS,vscore.results))
-            unk_src = float(100) * dev.nunk_src / dev.nsrc
-            unk_tgt = float(100) * dev.nunk_tgt / dev.ntgt
-            sys.stderr.write(' Valid set: words={}/{} %ones={:.2f} pair={} unpair={} swap={} extend={} replace={} %unk={:.2f}/{:.2f}\n'.format(dev.nsrc,dev.ntgt,100.0*dev.nones/dev.nlnks,dev.npair,dev.nunpair,dev.nswap,dev.nextend,dev.nreplace,unk_src,unk_tgt,VLOSS))
+            unk_s = float(100) * dev.nunk_src / dev.nsrc
+            unk_t = float(100) * dev.nunk_tgt / dev.ntgt
+            sys.stderr.write(' Valid set: words={}/{} %ones={:.2f} pair={} unpair={} swap={} extend={} replace={} %unk={:.2f}/{:.2f}\n'.format(dev.nsrc,dev.ntgt,100.0*dev.nones/dev.nlnks,dev.npair,dev.nunpair,dev.nswap,dev.nextend,dev.nreplace,unk_s,unk_t,VLOSS))
 
         #################################
         #keep record of current epoch ###
@@ -391,14 +388,13 @@ class Model():
 
         if tst.annotated:
             score.summarize()
-            unk_s = float(100) * tst.nunk_src / tst.nsrc
-            unk_t = float(100) * tst.nunk_tgt / tst.ntgt
             curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
             sys.stderr.write('{} TEST ({})'.format(curr_time,score.results))
+            unk_s = float(100) * tst.nunk_src / tst.nsrc
+            unk_t = float(100) * tst.nunk_tgt / tst.ntgt
             sys.stderr.write(' Test set: words={}/{} %ones={:.2f} pair={} unpair={} swap={} extend={} replace={} %unk={:.2f}/{:.2f}\n'.format(tst.nsrc,tst.ntgt,100.0*tst.nones/tst.nlnks,tst.npair,tst.nunpair,tst.nswap,tst.nextend,tst.nreplace,unk_s,unk_t))
 
         if self.config.show_svg: print "</body>\n</html>"
-
 
 ###################
 ### session #######
