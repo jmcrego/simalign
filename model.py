@@ -106,13 +106,13 @@ class Model():
                 mask = tf.sequence_mask(self.len_src, dtype=tf.float32) #[B, S]
                 mask = tf.expand_dims(mask, 2) #[B, S, 1]
                 self.snt_src = self.out_src * mask + (1-mask) * tf.float32.min
-                self.snt_src = tf.reduce_max(self.snt_src, axis=1)
+                self.snt_src = tf.reduce_max(self.snt_src, axis=1) #[B, H]
 #                self.snt_src = tf.squeeze(self.snt_src, axis=1)
             elif self.config.sim == 'mean':
                 mask = tf.sequence_mask(self.len_src, dtype=tf.float32) #[B, S]
                 mask = tf.expand_dims(mask, 2) #[B, S, 1]
                 self.snt_src = self.out_src * mask + (1-mask) * tf.float32.min
-                self.snt_src = tf.reduce_sum(self.snt_src, axis=1) / tf.to_float(tf.expand_dims(self.len_src,0))
+                self.snt_src = tf.reduce_sum(self.snt_src, axis=1) / tf.to_float(self.len_src) 
             else:
                 sys.stderr.write("error: bad -sim option '{}'\n".format(self.config.sim))
                 sys.exit()
@@ -147,13 +147,13 @@ class Model():
                 mask = tf.sequence_mask(self.len_tgt, dtype=tf.float32) ## 1s if in length, 0s otherwise
                 mask = tf.expand_dims(mask, 2) 
                 self.snt_tgt = self.out_tgt * mask + (1-mask) * tf.float32.min 
-                self.snt_tgt = tf.reduce_max(self.snt_tgt, axis=1) #[B, 1, H]
+                self.snt_tgt = tf.reduce_max(self.snt_tgt, axis=1) #[B, H]
 #                self.snt_tgt = tf.squeeze(self.snt_tgt, axis=1)
             elif self.config.sim == 'mean':
                 mask = tf.sequence_mask(self.len_tgt, dtype=tf.float32) #[B, S]
                 mask = tf.expand_dims(mask, 2) #[B, S, 1]
                 self.snt_tgt = self.out_tgt * mask + (1-mask) * tf.float32.min
-                self.snt_tgt = tf.reduce_sum(self.snt_tgt, axis=1) / tf.to_float(tf.expand_dims(self.len_tgt,0))
+                self.snt_tgt = tf.reduce_sum(self.snt_tgt, axis=1) / tf.to_float(self.len_tgt)
             else:
                 sys.stderr.write("error: bad -sim option '{}'\n".format(self.config.sim))
                 sys.exit()
