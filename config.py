@@ -34,8 +34,9 @@ class Config():
    -tgt_lstm_size  INT : hidden units for tgt bi-lstm [256]
 
    -dropout      FLOAT : dropout ratio [0.3]
-   -error       STRING : error function (mse, exp) [mse]
-   -aggr        STRING : aggregation function (sum, lse) [sum]
+   -error       STRING : error function (mse, exp, lse) [mse]
+   -r            FLOAT : r used when error=='lse' [1.0]
+   -aggr        STRING : aggregation function (sum, lse) [sum] NOT USED
    -lr_method   STRING : GD method either: adam, adagrad, adadelta, sgd, rmsprop [adam]
    -lr           FLOAT : initial learning rate [0.001]
    -lr_decay     FLOAT : learning rate decay if lr_method is sgd [0.9]
@@ -108,6 +109,7 @@ class Config():
         self.report_every = 100
         self.debug = False
         self.mark_unks = False
+        self.r = 1.0
         self.error = "mse"
         self.aggr = "sum"
         self.sim = "last"
@@ -300,6 +302,8 @@ class Config():
                 self.lr_method = argv.pop(0)
             elif (tok=="-clip" and len(argv)):
                 self.clip = float(argv.pop(0))
+            elif (tok=="-r" and len(argv)):
+                self.r = float(argv.pop(0))
             elif (tok=="-error" and len(argv)):
                 self.error = argv.pop(0)
             elif (tok=="-aggr" and len(argv)):

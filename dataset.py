@@ -189,7 +189,10 @@ class Dataset():
     def get_delete_example(self, index):
         (src, tgt, ali) = self.data[index]
         # to replace, sentences must be at least 10 words
-        if len(src) < 10 or len(tgt) < 10: return [], [], []
+        if len(src) < 6 or len(tgt) < 6: return [], [], []
+#        print("SRC: {}".format(" ".join(s for s in src)))
+#        print("TGT: {}".format(" ".join(t for t in tgt)))
+#        print("ALI: {}".format(" ".join(a for a in ali)))
         n_rep = 0
         while True:
             n_rep += 1
@@ -199,7 +202,8 @@ class Dataset():
                 ini = int(random.random() * len(src)) 
                 l = int(random.random() * (len(src)-ini-1)) + 1
                 end = ini + l
-                src2 = src[0:ini] + src[end:-1]
+#                print("ini,end=[{}, +{}, {})".format(ini,l,end))
+                src2 = src[:ini] + src[end:]
                 ali2 = []
                 for a in ali:
                     if len(a.split('-')) != 2:
@@ -212,14 +216,18 @@ class Dataset():
                     if t >= len(tgt):
                         sys.stderr.write('warning: tgt alignment: {} out of bounds: {}\n'.format(t, tgt))
                         continue
-                    if (s<ini or s>=end): ali2.append("{}-{}".format(s,t))
+                    if s<ini: ali2.append("{}-{}".format(s,t))
+                    elif s>=end: ali2.append("{}-{}".format(s-l,t))
+#                print("src: {}".format(" ".join(s for s in src2)))
+#                print("ali: {}".format(" ".join(a for a in ali2)))
                 return src2, tgt, ali2
 
             else: #delete in tgt
                 ini = int(random.random() * len(tgt)) 
                 l = int(random.random() * (len(tgt)-ini-1)) + 1
                 end = ini + l
-                tgt2 = tgt[0:ini] + tgt[end:-1]
+#                print("ini,end=[{}, +{} ,{})".format(ini,l,end))
+                tgt2 = tgt[:ini] + tgt[end:]
                 ali2 = []
                 for a in ali:
                     if len(a.split('-')) != 2:
@@ -232,7 +240,10 @@ class Dataset():
                     if t >= len(tgt):
                         sys.stderr.write('warning: tgt alignment: {} out of bounds: {}\n'.format(t, tgt))
                         continue
-                    if (t<ini or t>=end): ali2.append("{}-{}".format(s,t))
+                    if t<ini: ali2.append("{}-{}".format(s,t))
+                    elif t>=end: ali2.append("{}-{}".format(s,t-l))
+#                print("tgt: {}".format(" ".join(t for t in tgt2)))
+#                print("ali: {}".format(" ".join(a for a in ali2)))
                 return src, tgt2, ali2
 
         return [], [], []
@@ -434,7 +445,7 @@ def build_batch(SRC, TGT, ALI, RAW_SRC, RAW_TGT, max_src, max_tgt):
         while len(tgt) < max_tgt: tgt.append(idx_pad) #<pad>
         while len(ali_src) < max_src: ali_src.append(0.0) #<pad>
         while len(ali_tgt) < max_tgt: ali_tgt.append(0.0) #<pad>
-        ### ali acts as mask (ali==0 for <pad>'s')
+        ### ali acts as mask (ali==0 for <pad>'s') [not really optimized :-()]
         for s in range(max_src):
             for t in range(max_tgt):
                 if s >= len_src or t >= len_tgt: 

@@ -198,11 +198,10 @@ class Model():
 #                self.input_ali_tgt = tf.reduce_max(self.input_ali+input_ali_mask_inf, axis=1) # +1.0 if aligned to the src sentence, -1.0 if not aligned, -Inf padded
 #                self.input_ali_src = -tf.where(tf.less(self.input_ali_src, -1.0), tf.zeros_like(self.input_ali_src), self.input_ali_src) # -1.0 if aligned to the tgt sentence, +1.0 if not aligned (divergent), 0.0 padded
 #                self.input_ali_tgt = -tf.where(tf.less(self.input_ali_tgt, -1.0), tf.zeros_like(self.input_ali_tgt), self.input_ali_tgt) # -1.0 if aligned to the tgt sentence, +1.0 if not aligned (divergent), 0.0 padded
-                R = 1.0
-                self.align_src = tf.divide(tf.log(tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (tf.exp(tf.transpose(self.align,[0,2,1]) * R), self.len_tgt) , dtype=tf.float32)), R, name="aggregation_src")
-                self.align_tgt = tf.divide(tf.log(tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (tf.exp(self.align * R),                       self.len_src) , dtype=tf.float32)), R, name="aggregation_tgt")
-                self.error_src = tf.log(1 + tf.exp(self.align_src * self.input_ali_src))
-                self.error_tgt = tf.log(1 + tf.exp(self.align_tgt * self.input_ali_tgt))
+                self.align_src = tf.divide(tf.log(tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (tf.exp(tf.transpose(self.align,[0,2,1]) * self.config.r), self.len_tgt) , dtype=tf.float32)), self.config.r, name="aggregation_src")
+                self.align_tgt = tf.divide(tf.log(tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (tf.exp(self.align * self.config.r),                       self.len_src) , dtype=tf.float32)), self.config.r, name="aggregation_tgt")
+                self.error_src = tf.log(1 + tf.exp(self.align_src * -self.input_ali_src))
+                self.error_tgt = tf.log(1 + tf.exp(self.align_tgt * -self.input_ali_tgt))
 
             else: 
                 sys.stderr.write("error: bad -error option '{}'\n".format(self.config.error))
