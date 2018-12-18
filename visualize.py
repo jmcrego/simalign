@@ -27,10 +27,10 @@ class Visualize():
         if mark_unks:
             for s in range(len(self.isrc)):
                 if self.isrc[s]==0: 
-                    self.src[s] = '<['+self.src[s]+']>'
+                    self.src[s] = '@@@'+self.src[s]+'@@@'
             for t in range(len(self.itgt)):
                 if self.itgt[t]==0: 
-                    self.tgt[t] = '<['+self.tgt[t]+']>'
+                    self.tgt[t] = '@@@'+self.tgt[t]+'@@@'
 
 
     def print_matrix(self):
