@@ -401,7 +401,7 @@ def minibatches(data, minibatch_size):
         yield build_batch(SRC, TGT, ALI, RAW_SRC, RAW_TGT, max_src, max_tgt)
 
 def build_batch(SRC, TGT, ALI, RAW_SRC, RAW_TGT, max_src, max_tgt):
-    src_batch, tgt_batch, ali_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch = [], [], [], [], [], [], []
+    src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch = [], [], [], [], [], [], [], [], []
     ### build: src_batch, pad_src_batch sized of max_src
     batch_size = len(SRC)
     for i in range(batch_size):
@@ -412,6 +412,8 @@ def build_batch(SRC, TGT, ALI, RAW_SRC, RAW_TGT, max_src, max_tgt):
         len_src = len(src)
         len_tgt = len(tgt)
         ali = [[-1.0 for x in range(max_tgt)] for y in range(max_src)] #will contain 1.0 (for present links) -1.0 (non present links) 0.0 (padded words)
+        ali_src = [-1.0 for x in range(len_src)] #will contain 1.0 if src word is aligned to any tgt word -1 if not and 0.0 if padded
+        ali_tgt = [-1.0 for x in range(len_tgt)] #will contain 1.0 if tgt word is aligned to any src word -1 if not and 0.0 if padded
         for a in ALI[i]:
             if len(a.split('-')) != 2:
                 sys.stderr.write('warning: bad alignment: {} in ali {} [skipped alignment]\n'.format(a,ALI[i]))
@@ -425,9 +427,13 @@ def build_batch(SRC, TGT, ALI, RAW_SRC, RAW_TGT, max_src, max_tgt):
                 sys.stderr.write('warning: tgt alignment: {} out of bounds {} [skipped alignment]\n'.format(t,len(TGT[i])))
                 continue
             ali[s][t] = 1.0
+            ali_src[s] = 1.0
+            ali_tgt[t] = 1.0
         # add padding to have max_src/max_tgt words in all examples of current batch
         while len(src) < max_src: src.append(idx_pad) #<pad>
         while len(tgt) < max_tgt: tgt.append(idx_pad) #<pad>
+        while len(ali_src) < max_src: ali_src.append(0.0) #<pad>
+        while len(ali_tgt) < max_tgt: ali_tgt.append(0.0) #<pad>
         ### ali acts as mask (ali==0 for <pad>'s')
         for s in range(max_src):
             for t in range(max_tgt):
@@ -437,6 +443,8 @@ def build_batch(SRC, TGT, ALI, RAW_SRC, RAW_TGT, max_src, max_tgt):
         src_batch.append(src)
         tgt_batch.append(tgt)
         ali_batch.append(ali)
+        ali_src_batch.append(ali_src)
+        ali_tgt_batch.append(ali_tgt)
         raw_src_batch.append(raw_src)
         raw_tgt_batch.append(raw_tgt)
         len_src_batch.append(len_src)
@@ -450,6 +458,6 @@ def build_batch(SRC, TGT, ALI, RAW_SRC, RAW_TGT, max_src, max_tgt):
 #    print("len_src: {}".format(len_src_batch))
 #    print("len_tgt: {}".format(len_tgt_batch))
 #    sys.exit()
-    return src_batch, tgt_batch, ali_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch
+    return src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch
 
 

@@ -16,7 +16,7 @@ def main():
 
     if config.trn:
         trn = Dataset(config.trn, config.voc_src, config.voc_tgt, config.seq_size, config.max_sents, config.p_unpair, config.p_delete, config.p_extend, config.p_replace, do_shuffle=True)
-        dev = Dataset(config.dev, config.voc_src, config.voc_tgt, seq_size=0,      max_sents=0,      p_unpair=0.0,    p_delete=0.0,    p_extend=0.0,    p_replace=0.0,    do_shuffle=False)
+        dev = Dataset(config.dev, config.voc_src, config.voc_tgt, 0,               0,                config.p_unpair, config.p_delete, config.p_extend, config.p_replace, do_shuffle=False)
         model.learn(trn, dev, config.n_epochs)
     if config.tst:
         tst = Dataset(config.tst, config.voc_src, config.voc_tgt, seq_size=0,      max_sents=0,      p_unpair=0.0,    p_delete=0.0   , p_extend=0.0,    p_replace=0.0,    do_shuffle=False)

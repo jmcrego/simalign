@@ -21,21 +21,37 @@ class Score():
         self.R = 0.0
         self.F = 0.0
 
+
     def add_batch(self, p, r): ### prediction, reference
         #reference contains:
         # +1: aligned
         # -1: unaligned
         #  0: padded
-        p_times_r = p * r
-        TRUE = np.greater(p_times_r, np.zeros_like(r)) ### matix with true predictions
-        FALS = np.less(p_times_r, np.zeros_like(r)) ### matix with false predictions
-        POS = np.greater(p, np.zeros_like(r)) ### matix with positive predictions (aligned words)
-        NEG = np.less(p, np.zeros_like(r)) ### matix with negative predictions (unaligned wods)
-        ### Attention: predictions p==0.000 are not considered 
-        self.TP += np.count_nonzero(np.logical_and(TRUE, POS))
-        self.TN += np.count_nonzero(np.logical_and(TRUE, NEG))
-        self.FP += np.count_nonzero(np.logical_and(FALS, POS))
-        self.FN += np.count_nonzero(np.logical_and(FALS, NEG))
+
+        if len(np.shape(r)) == 2:
+            for b in range(len(r)):
+                for w in range(len(r[b])):
+                    pre = p[b][w]
+                    ref = r[b][w]
+                    if ref == 0.0: break
+                    if pre > 0:
+                        if ref > 0: self.TP += 1
+                        else:  self.FP += 1
+                    else:
+                        if ref < 0: self.TN += 1
+                        else:  self.FN += 1
+
+        else:
+            p_times_r = p * r
+            TRUE = np.greater(p_times_r, np.zeros_like(r)) ### matrix with true predictions
+            FALS = np.less(p_times_r, np.zeros_like(r)) ### matrix with false predictions
+            POS = np.greater(p, np.zeros_like(r)) ### matrix with positive predictions (aligned words)
+            NEG = np.less(p, np.zeros_like(r)) ### matrix with negative predictions (unaligned wods)
+            ### Attention: predictions p==0.000 are not considered 
+            self.TP += np.count_nonzero(np.logical_and(TRUE, POS))
+            self.TN += np.count_nonzero(np.logical_and(TRUE, NEG))
+            self.FP += np.count_nonzero(np.logical_and(FALS, POS))
+            self.FN += np.count_nonzero(np.logical_and(FALS, NEG))
 
     def summarize(self):
         self.A, self.P, self.R, self.F = 0.0, 0.0, 0.0, 0.0
@@ -63,12 +79,14 @@ class Model():
 ###################
 
     def add_placeholders(self):
-        self.input_src  = tf.placeholder(tf.int32, shape=[None,None],        name="input_src")  # Shape: batch_size x |Fj|  (all sentences Fj are equally sized (padded if needed))  
-        self.input_tgt  = tf.placeholder(tf.int32, shape=[None,None],        name="input_tgt")  # Shape: batch_size x |Ei|  (all sentences Ej are equally sized (padded if needed))  
-        self.input_ali  = tf.placeholder(tf.float32, shape=[None,None,None], name="input_ali")
-        self.len_src    = tf.placeholder(tf.int32, shape=[None], name="len_src")
-        self.len_tgt    = tf.placeholder(tf.int32, shape=[None], name="len_tgt")
-        self.lr         = tf.placeholder(tf.float32, shape=[], name="lr")
+        self.input_src     = tf.placeholder(tf.int32, shape=[None,None],        name="input_src")  # Shape: batch_size x |Fj|  (all sentences Fj are equally sized (padded if needed))  
+        self.input_tgt     = tf.placeholder(tf.int32, shape=[None,None],        name="input_tgt")  # Shape: batch_size x |Ei|  (all sentences Ej are equally sized (padded if needed))  
+        self.input_ali     = tf.placeholder(tf.float32, shape=[None,None,None], name="input_ali")
+        self.input_ali_src = tf.placeholder(tf.float32, shape=[None,None], name="input_ali_src")
+        self.input_ali_tgt = tf.placeholder(tf.float32, shape=[None,None], name="input_ali_tgt")
+        self.len_src       = tf.placeholder(tf.int32, shape=[None], name="len_src")
+        self.len_tgt       = tf.placeholder(tf.int32, shape=[None], name="len_tgt")
+        self.lr            = tf.placeholder(tf.float32, shape=[], name="lr")
 
     def add_model(self):
         BS = tf.shape(self.input_src)[0] #batch size
@@ -169,20 +187,22 @@ class Model():
                 #### next lines are only needed for inference (to show aggragation values)
                 pred_ones = self.align * tf.to_float(align_ones_mask) ### matrix that contain the alignment predictions only if positive (aligned pair)
                 # aggr is sum over all predicted aligned
-                self.aggregation_src = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (tf.transpose(pred_ones,[0,2,1]), self.len_tgt), dtype=tf.float32, name="aggregation_src")
-                self.aggregation_tgt = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (pred_ones,                       self.len_src), dtype=tf.float32, name="aggregation_tgt")
+
+                self.align_src = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (tf.transpose(pred_ones,[0,2,1]), self.len_tgt), dtype=tf.float32, name="aggregation_src")
+                self.align_tgt = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (pred_ones,                       self.len_src), dtype=tf.float32, name="aggregation_tgt")
 
             elif self.config.error == 'lse':
+#                input_ali_mask = tf.to_float(tf.not_equal(self.input_ali, tf.zeros_like(self.input_ali,dtype=tf.float32))) #padded => 0.0, valid pairs => 1.0
+#                input_ali_mask_inf = tf.log(input_ali_mask) #padded => -Inf valid pairs => 0.0 
+#                self.input_ali_src = tf.reduce_max(self.input_ali+input_ali_mask_inf, axis=2) # +1.0 if aligned to the tgt sentence, -1.0 if not aligned, -Inf padded
+#                self.input_ali_tgt = tf.reduce_max(self.input_ali+input_ali_mask_inf, axis=1) # +1.0 if aligned to the src sentence, -1.0 if not aligned, -Inf padded
+#                self.input_ali_src = -tf.where(tf.less(self.input_ali_src, -1.0), tf.zeros_like(self.input_ali_src), self.input_ali_src) # -1.0 if aligned to the tgt sentence, +1.0 if not aligned (divergent), 0.0 padded
+#                self.input_ali_tgt = -tf.where(tf.less(self.input_ali_tgt, -1.0), tf.zeros_like(self.input_ali_tgt), self.input_ali_tgt) # -1.0 if aligned to the tgt sentence, +1.0 if not aligned (divergent), 0.0 padded
                 R = 1.0
-
-                self.input_ali_src = tf.reduce_max(self.input_ali, axis=2) # +1.0 if there is one alignment, -1.0 otherwise
-                self.input_ali_tgt = tf.reduce_max(self.input_ali, axis=1) # +1.0 if there is one alignment, -1.0 otherwise
-
-                self.aggregation_src = tf.divide(tf.log(tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (tf.exp(tf.transpose(self.align,[0,2,1]) * R), self.len_tgt) , dtype=tf.float32)), R, name="aggregation_src")
-                self.aggregation_tgt = tf.divide(tf.log(tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (tf.exp(self.align * R),                       self.len_src) , dtype=tf.float32)), R, name="aggregation_tgt")
-
-                self.error_src = tf.log(1 + tf.exp(self.aggregation_src * self.input_ali_src))
-                self.error_tgt = tf.log(1 + tf.exp(self.aggregation_tgt * self.input_ali_tgt))
+                self.align_src = tf.divide(tf.log(tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (tf.exp(tf.transpose(self.align,[0,2,1]) * R), self.len_tgt) , dtype=tf.float32)), R, name="aggregation_src")
+                self.align_tgt = tf.divide(tf.log(tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (tf.exp(self.align * R),                       self.len_src) , dtype=tf.float32)), R, name="aggregation_tgt")
+                self.error_src = tf.log(1 + tf.exp(self.align_src * self.input_ali_src))
+                self.error_tgt = tf.log(1 + tf.exp(self.align_tgt * self.input_ali_tgt))
 
             else: 
                 sys.stderr.write("error: bad -error option '{}'\n".format(self.config.error))
@@ -225,11 +245,13 @@ class Model():
 ### feed_dict #####
 ###################
 
-    def get_feed_dict(self, src, tgt, ali, len_src, len_tgt, lr):
+    def get_feed_dict(self, src, tgt, ali, ali_src, ali_tgt, len_src, len_tgt, lr):
         feed = { 
             self.input_src: src,
             self.input_tgt: tgt,
             self.input_ali: ali,
+            self.input_ali_src: ali_src,
+            self.input_ali_tgt: ali_tgt,
             self.len_src: len_src,
             self.len_tgt: len_tgt,
             self.lr: lr
@@ -241,7 +263,6 @@ class Model():
 ###################
 
     def run_epoch(self, train, dev, lr):
-
         #######################
         # learn on trainset ###
         #######################
@@ -252,14 +273,20 @@ class Model():
         tscore = Score()
         iscore = Score()
         ini_time = time.time()
-        for iter, (src_batch, tgt_batch, ali_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(train, self.config.batch_size)):
-            fd = self.get_feed_dict(src_batch, tgt_batch, ali_batch, len_src_batch, len_tgt_batch, lr)
-            _, loss, align = self.sess.run([self.train_op, self.loss, self.align], feed_dict=fd)
-            tscore.add_batch(align, ali_batch)
-            iscore.add_batch(align, ali_batch)
+        for iter, (src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(train, self.config.batch_size)):
+            fd = self.get_feed_dict(src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, len_src_batch, len_tgt_batch, lr)
+            _, loss, align, align_src, align_tgt = self.sess.run([self.train_op, self.loss, self.align, self.align_src, self.align_tgt], feed_dict=fd)
             TLOSS += loss
             ILOSS += loss
-
+            if self.config.error == 'lse':
+                tscore.add_batch(align_src, ali_src_batch)
+                iscore.add_batch(align_src, ali_src_batch)
+                tscore.add_batch(align_tgt, ali_tgt_batch)
+                iscore.add_batch(align_tgt, ali_tgt_batch)
+            else:
+                tscore.add_batch(align, ali_batch)
+                iscore.add_batch(align, ali_batch)
+    
             if (iter+1)%self.config.report_every == 0:
                 curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
                 iscore.summarize()
@@ -286,13 +313,17 @@ class Model():
             VLOSS = 0
             vscore = Score()
 
-            for iter, (src_batch, tgt_batch, ali_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(dev, self.config.batch_size)):
-                fd = self.get_feed_dict(src_batch, tgt_batch, ali_batch, len_src_batch, len_tgt_batch, 0.0)
-                loss, align = self.sess.run([self.loss, self.align], feed_dict=fd)
-                vscore.add_batch(align, ali_batch)
+            for iter, (src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(dev, self.config.batch_size)):
+                fd = self.get_feed_dict(src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, len_src_batch, len_tgt_batch, 0.0)
+                loss, align, align_src, align_tgt = self.sess.run([self.loss, self.align, self.align_src, self.align_tgt], feed_dict=fd)
+                if self.config.error == 'lse':
+                    vscore.add_batch(align_src, ali_src_batch)
+                    vscore.add_batch(align_tgt, ali_tgt_batch)
+                else:
+                    vscore.add_batch(align, ali_batch)
                 VLOSS += loss # append single value which is a mean of losses of the n examples in the batch
-            vscore.summarize()
             VLOSS = VLOSS/nbatches
+            vscore.summarize()
             sys.stderr.write('{} Epoch {} VALID loss={:.4f} ({})'.format(curr_time,curr_epoch,VLOSS,vscore.results))
             unk_s = float(100) * dev.nunk_src / dev.nsrc
             unk_t = float(100) * dev.nunk_tgt / dev.ntgt
@@ -346,16 +377,20 @@ class Model():
         score = Score()
         n_sents = 0
 
-        for iter, (src_batch, tgt_batch, ali_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(tst, self.config.batch_size)):
-            fd = self.get_feed_dict(src_batch, tgt_batch, ali_batch, len_src_batch, len_tgt_batch, 0.0)
+        for iter, (src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(tst, self.config.batch_size)):
+            fd = self.get_feed_dict(src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, len_src_batch, len_tgt_batch, 0.0)
 
-            align_batch, snt_src_batch, snt_tgt_batch, sim_batch, aggr_src_batch, aggr_tgt_batch = self.sess.run([self.align, self.snt_src, self.snt_tgt, self.cos_similarity, self.aggregation_src, self.aggregation_tgt], feed_dict=fd)
+            align, snt_src, snt_tgt, sim, align_src, align_tgt = self.sess.run([self.align, self.snt_src, self.snt_tgt, self.cos_similarity, self.align_src, self.align_tgt], feed_dict=fd)
             if tst.annotated: 
-                score.add_batch(align_batch, ali_batch)
+                if self.config.error == 'lse':
+                    score.add_batch(align_src, ali_src_batch)
+                    score.add_batch(align_tgt, ali_tgt_batch)
+                else:
+                    score.add_batch(align, ali_batch)
 
-            for i_sent in range(len(align_batch)):
+            for i_sent in range(len(align)):
                 n_sents += 1
-                v = Visualize(n_sents,src_batch[i_sent],tgt_batch[i_sent],raw_src_batch[i_sent],raw_tgt_batch[i_sent],sim_batch[i_sent],align_batch[i_sent],aggr_src_batch[i_sent],aggr_tgt_batch[i_sent],snt_src_batch[i_sent],snt_tgt_batch[i_sent],self.config.mark_unks)
+                v = Visualize(n_sents,src_batch[i_sent],tgt_batch[i_sent],raw_src_batch[i_sent],raw_tgt_batch[i_sent],sim[i_sent],align[i_sent],align_src[i_sent],align_tgt[i_sent],snt_src[i_sent],snt_tgt[i_sent],self.config.mark_unks)
                 if self.config.show_svg: v.print_svg()
                 elif self.config.show_matrix: v.print_matrix()
                 else: v.print_vectors(self.config.show_sim,self.config.show_align)
