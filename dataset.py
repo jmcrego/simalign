@@ -330,6 +330,7 @@ class Dataset():
         if self.do_shuffle: shuffle(indexs)
         for index in indexs:
             src, tgt, ali = [], [], []
+            sim = 1.0
             if self.annotated:
                 p = random.random() # p in [0.0, 1.0)
                 ###
@@ -339,6 +340,7 @@ class Dataset():
                 pmax = pmin + self.p_unpair
                 if p >= pmin and p < pmax: 
                     (src, tgt, ali) = self.get_unpair_example(index)
+                    sim = -1.0
                     if len(src) and len(tgt): self.nunpair += 1
                 ###
                 ### extend
@@ -347,6 +349,7 @@ class Dataset():
                 pmax = pmin + self.p_extend
                 if p >= pmin and p < pmax: 
                     (src, tgt, ali) = self.get_extend_example(index)
+                    sim = 0.0
                     if len(src) and len(tgt): self.nextend += 1
                 ###
                 ### delete
@@ -355,6 +358,7 @@ class Dataset():
                 pmax = pmin + self.p_delete
                 if p >= pmin and p < pmax: 
                     (src, tgt, ali) = self.get_delete_example(index)
+                    sim = 0.0
                     if len(src) and len(tgt): self.ndelete += 1
                 ###
                 ### replace
@@ -363,15 +367,14 @@ class Dataset():
                 pmax = pmin + self.p_replace
                 if p >= pmin and p < pmax: 
                     (src, tgt, ali) = self.get_replace_example(index)
+                    sim = 0.0
                     if len(src) and len(tgt): self.nreplace += 1
-
             ###
             ### pair
             ###
             if len(src)==0 and len(tgt)==0:
                 (src, tgt, ali) = self.data[index] 
                 if len(src) and len(tgt): self.npair += 1
-
 
             self.nones += len(ali)
             self.nlnks += len(src)*len(tgt)
@@ -388,36 +391,38 @@ class Dataset():
                 if itgt[-1] == idx_unk: self.nunk_tgt += 1
                 self.ntgt += 1
 
-            yield isrc, itgt, ali, src, tgt
+            yield isrc, itgt, ali, src, tgt, sim
             nsent += 1
             if self.max_sents > 0 and nsent >= self.max_sents: break # already generated max_sents examples
 
 def minibatches(data, minibatch_size):
-    SRC, TGT, ALI, RAW_SRC, RAW_TGT = [], [], [], [], []
+    SRC, TGT, ALI, SIM, RAW_SRC, RAW_TGT = [], [], [], [], [], []
     max_src, max_tgt = 0, 0
-    for (src, tgt, ali, raw_src, raw_tgt) in data:
+    for (src, tgt, ali, raw_src, raw_tgt, sim) in data:
         if len(SRC) == minibatch_size:
-            yield build_batch(SRC, TGT, ALI, RAW_SRC, RAW_TGT, max_src, max_tgt)
-            SRC, TGT, ALI, RAW_SRC, RAW_TGT = [], [], [], [], []
+            yield build_batch(SRC, TGT, ALI, SIM, RAW_SRC, RAW_TGT, max_src, max_tgt)
+            SRC, TGT, ALI, SIM, RAW_SRC, RAW_TGT = [], [], [], [], [], []
             max_src, max_tgt = 0, 0
         if len(src) > max_src: max_src = len(src)
         if len(tgt) > max_tgt: max_tgt = len(tgt)
         SRC.append(src)
         TGT.append(tgt)
         ALI.append(ali)
+        SIM.append(sim)
         RAW_SRC.append(raw_src)
         RAW_TGT.append(raw_tgt)
 
     if len(SRC) != 0:
-        yield build_batch(SRC, TGT, ALI, RAW_SRC, RAW_TGT, max_src, max_tgt)
+        yield build_batch(SRC, TGT, ALI, SIM, RAW_SRC, RAW_TGT, max_src, max_tgt)
 
-def build_batch(SRC, TGT, ALI, RAW_SRC, RAW_TGT, max_src, max_tgt):
-    src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch = [], [], [], [], [], [], [], [], []
+def build_batch(SRC, TGT, ALI, SIM, RAW_SRC, RAW_TGT, max_src, max_tgt):
+    src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, sim_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch = [], [], [], [], [], [], [], [], [], []
     ### build: src_batch, pad_src_batch sized of max_src
     batch_size = len(SRC)
     for i in range(batch_size):
         src = list(SRC[i])
         tgt = list(TGT[i])
+        sim = SIM[i]
         raw_src = list(RAW_SRC[i])
         raw_tgt = list(RAW_TGT[i])
         len_src = len(src)
@@ -454,6 +459,7 @@ def build_batch(SRC, TGT, ALI, RAW_SRC, RAW_TGT, max_src, max_tgt):
         src_batch.append(src)
         tgt_batch.append(tgt)
         ali_batch.append(ali)
+        sim_batch.append(sim)
         ali_src_batch.append(ali_src)
         ali_tgt_batch.append(ali_tgt)
         raw_src_batch.append(raw_src)
@@ -469,6 +475,6 @@ def build_batch(SRC, TGT, ALI, RAW_SRC, RAW_TGT, max_src, max_tgt):
 #    print("len_src: {}".format(len_src_batch))
 #    print("len_tgt: {}".format(len_tgt_batch))
 #    sys.exit()
-    return src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch
+    return src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, sim_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch
 
 
