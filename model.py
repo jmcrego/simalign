@@ -27,42 +27,16 @@ class Score():
         # +1: aligned
         # -1: unaligned
         #  0: padded
-
-        if len(np.shape(r)) == 2:
-            p_times_r = p * r
-            TRUE = np.greater(p_times_r, np.zeros_like(r)) ### matrix with true predictions
-            FALS = np.less(p_times_r, np.zeros_like(r)) ### matrix with false predictions
-            POS = np.greater(p, np.zeros_like(r)) ### matrix with positive predictions (aligned words)
-            NEG = np.less(p, np.zeros_like(r)) ### matrix with negative predictions (unaligned wods)
-            ### Attention: predictions p==0.000 are not considered 
-            self.TP += np.count_nonzero(np.logical_and(TRUE, POS))
-            self.TN += np.count_nonzero(np.logical_and(TRUE, NEG))
-            self.FP += np.count_nonzero(np.logical_and(FALS, POS))
-            self.FN += np.count_nonzero(np.logical_and(FALS, NEG))
-
-            for b in range(len(r)):
-                for w in range(len(r[b])):
-                    pre = p[b][w]
-                    ref = r[b][w]
-                    if ref == 0.0: break
-                    if pre > 0:
-                        if ref > 0: self.TP += 1
-                        else:  self.FP += 1
-                    else:
-                        if ref < 0: self.TN += 1
-                        else:  self.FN += 1
-
-        else:
-            p_times_r = p * r
-            TRUE = np.greater(p_times_r, np.zeros_like(r)) ### matrix with true predictions
-            FALS = np.less(p_times_r, np.zeros_like(r)) ### matrix with false predictions
-            POS = np.greater(p, np.zeros_like(r)) ### matrix with positive predictions (aligned words)
-            NEG = np.less(p, np.zeros_like(r)) ### matrix with negative predictions (unaligned wods)
-            ### Attention: predictions p==0.000 are not considered 
-            self.TP += np.count_nonzero(np.logical_and(TRUE, POS))
-            self.TN += np.count_nonzero(np.logical_and(TRUE, NEG))
-            self.FP += np.count_nonzero(np.logical_and(FALS, POS))
-            self.FN += np.count_nonzero(np.logical_and(FALS, NEG))
+        p_times_r = p * r
+        T = np.greater(p_times_r, np.zeros_like(r)) ### matrix with true predictions
+        F = np.less(p_times_r, np.zeros_like(r)) ### matrix with false predictions
+        P = np.greater(p, np.zeros_like(r)) ### matrix with positive predictions (aligned words)
+        N = np.less(p, np.zeros_like(r)) ### matrix with negative predictions (unaligned wods)
+        ### Attention: predictions p==0.000 are not considered 
+        self.TP += np.count_nonzero(np.logical_and(T, P))
+        self.TN += np.count_nonzero(np.logical_and(T, N))
+        self.FP += np.count_nonzero(np.logical_and(F, P))
+        self.FN += np.count_nonzero(np.logical_and(F, N))
 
     def summarize(self):
         self.A, self.P, self.R, self.F = 0.0, 0.0, 0.0, 0.0
