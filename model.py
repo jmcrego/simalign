@@ -29,6 +29,17 @@ class Score():
         #  0: padded
 
         if len(np.shape(r)) == 2:
+            p_times_r = p * r
+            TRUE = np.greater(p_times_r, np.zeros_like(r)) ### matrix with true predictions
+            FALS = np.less(p_times_r, np.zeros_like(r)) ### matrix with false predictions
+            POS = np.greater(p, np.zeros_like(r)) ### matrix with positive predictions (aligned words)
+            NEG = np.less(p, np.zeros_like(r)) ### matrix with negative predictions (unaligned wods)
+            ### Attention: predictions p==0.000 are not considered 
+            self.TP += np.count_nonzero(np.logical_and(TRUE, POS))
+            self.TN += np.count_nonzero(np.logical_and(TRUE, NEG))
+            self.FP += np.count_nonzero(np.logical_and(FALS, POS))
+            self.FN += np.count_nonzero(np.logical_and(FALS, NEG))
+
             for b in range(len(r)):
                 for w in range(len(r[b])):
                     pre = p[b][w]
@@ -139,6 +150,9 @@ class Model():
 #            sys.stderr.write("var {} params={}\n".format(variable,variable.get_shape().num_elements()))
 
         with tf.name_scope("similarity"):
+            self.out_src = tf.concat([output_src_fw, output_src_bw], axis=2)            
+            self.out_tgt = tf.concat([output_tgt_fw, output_tgt_bw], axis=2)
+
             if self.config.sim == 'last':
                 self.snt_src = tf.concat([last_src_fw[1], last_src_bw[1]], axis=1)
                 self.snt_tgt = tf.concat([last_tgt_fw[1], last_tgt_bw[1]], axis=1)
@@ -163,8 +177,6 @@ class Model():
             self.cos_similarity = tf.reduce_sum(tf.nn.l2_normalize(self.snt_src, dim=1) * tf.nn.l2_normalize(self.snt_tgt, dim=1), axis=1) ### +1:similar -1:divergent
 
         with tf.name_scope("align"):
-            self.out_src = tf.concat([output_src_fw, output_src_bw], axis=2)            
-            self.out_tgt = tf.concat([output_tgt_fw, output_tgt_bw], axis=2)
             self.align = tf.map_fn(lambda (x,y): tf.matmul(x,tf.transpose(y)), (self.out_src, self.out_tgt), dtype = tf.float32, name="align")
 
         with tf.name_scope("aggregation"):
@@ -192,15 +204,9 @@ class Model():
                 self.align_tgt = tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (pred_ones,                       self.len_src), dtype=tf.float32, name="aggregation_tgt")
 
             elif self.config.error == 'lse':
-#                input_ali_mask = tf.to_float(tf.not_equal(self.input_ali, tf.zeros_like(self.input_ali,dtype=tf.float32))) #padded => 0.0, valid pairs => 1.0
-#                input_ali_mask_inf = tf.log(input_ali_mask) #padded => -Inf valid pairs => 0.0 
-#                self.input_ali_src = tf.reduce_max(self.input_ali+input_ali_mask_inf, axis=2) # +1.0 if aligned to the tgt sentence, -1.0 if not aligned, -Inf padded
-#                self.input_ali_tgt = tf.reduce_max(self.input_ali+input_ali_mask_inf, axis=1) # +1.0 if aligned to the src sentence, -1.0 if not aligned, -Inf padded
-#                self.input_ali_src = -tf.where(tf.less(self.input_ali_src, -1.0), tf.zeros_like(self.input_ali_src), self.input_ali_src) # -1.0 if aligned to the tgt sentence, +1.0 if not aligned (divergent), 0.0 padded
-#                self.input_ali_tgt = -tf.where(tf.less(self.input_ali_tgt, -1.0), tf.zeros_like(self.input_ali_tgt), self.input_ali_tgt) # -1.0 if aligned to the tgt sentence, +1.0 if not aligned (divergent), 0.0 padded
                 self.align_src = tf.divide(tf.log(tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (tf.exp(tf.transpose(self.align,[0,2,1]) * self.config.r), self.len_tgt) , dtype=tf.float32)), self.config.r, name="aggregation_src")
                 self.align_tgt = tf.divide(tf.log(tf.map_fn(lambda (x,l) : tf.reduce_sum(x[:l,:],0), (tf.exp(self.align * self.config.r),                       self.len_src) , dtype=tf.float32)), self.config.r, name="aggregation_tgt")
-                self.error_src = tf.log(1 + tf.exp(self.align_src * -self.input_ali_src))
+                self.error_src = tf.log(1 + tf.exp(self.align_src * -self.input_ali_src)) ### error larger if different sign
                 self.error_tgt = tf.log(1 + tf.exp(self.align_tgt * -self.input_ali_tgt))
 
             else: 
