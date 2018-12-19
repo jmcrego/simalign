@@ -23,7 +23,7 @@ class Score():
         self.ok = 0
         self.ko = 0
 
-    def add_batch(self, p, r, p_sim=None, r_sim=None): ### prediction, reference
+    def add_batch(self, p, r): ### prediction, reference
         #reference contains:
         # +1: aligned
         # -1: unaligned
@@ -38,10 +38,6 @@ class Score():
         self.TN += np.count_nonzero(np.logical_and(T, N))
         self.FP += np.count_nonzero(np.logical_and(F, P))
         self.FN += np.count_nonzero(np.logical_and(F, N))
-        if p_sim is not None and r_sim is not None:
-            p_times_r = p_sim * r_sim
-            self.ok += np.count_nonzero(np.greater(p_times_r, np.zeros_like(r_sim)))
-            self.ko += np.count_nonzero(np.less(p_times_r, np.zeros_like(r_sim)))
 
     def summarize(self):
         self.A, self.P, self.R, self.F = 0.0, 0.0, 0.0, 0.0
@@ -49,7 +45,8 @@ class Score():
         if self.TP + self.FN > 0: self.R = 1. * self.TP / (self.TP + self.FN) #true positives out of all that were actually positive
         if self.P + self.R > 0.0: self.F = 2. * self.P * self.R / (self.P + self.R) #F-measure
         if self.TP + self.TN + self.FP + self.FN > 0: self.A = 1.0 * (self.TP + self.TN) / (self.TP + self.TN + self.FP + self.FN) #Accuracy
-        self.results = "A{:.4f},P{:.4f},R{:.4f},F{:.4f} | TP:{},TN:{},FP:{},FN:{} | {}/{}".format(self.A,self.P,self.R,self.F,self.TP,self.TN,self.FP,self.FN,self.ok,self.ko)
+#        self.results = "A{:.4f},P{:.4f},R{:.4f},F{:.4f} | TP:{},TN:{},FP:{},FN:{} | {:.2f} of {}".format(self.A,self.P,self.R,self.F,self.TP,self.TN,self.FP,self.FN,self.ok/np.float32(self.ko+self.ok),self.ko+self.ok)
+        self.results = "A{:.4f},P{:.4f},R{:.4f},F{:.4f}".format(self.A,self.P,self.R,self.F)
 
 class Model():
     def __init__(self, config):
@@ -256,6 +253,8 @@ class Model():
         ILOSS = 0.0 # intermediate loss (average over [config.report_every] iterations)
         tscore = Score()
         iscore = Score()
+        tscore_snt = Score()
+        iscore_snt = Score()
         ini_time = time.time()
         for iter, (src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, sim_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(train, self.config.batch_size)):
             fd = self.get_feed_dict(src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, len_src_batch, len_tgt_batch, lr)
@@ -263,26 +262,33 @@ class Model():
             TLOSS += loss
             ILOSS += loss
             if self.config.error == 'lse':
-                tscore.add_batch(align_src, ali_src_batch, sim, sim_batch)
+                tscore.add_batch(align_src, ali_src_batch)
                 tscore.add_batch(align_tgt, ali_tgt_batch)
+                tscore_snt.add_batch(sim,sim_batch)
                 #
-                iscore.add_batch(align_src, ali_src_batch, sim, sim_batch)
+                iscore.add_batch(align_src, ali_src_batch)
                 iscore.add_batch(align_tgt, ali_tgt_batch)
+                iscore_snt.add_batch(sim,sim_batch)
             else:
                 tscore.add_batch(align, ali_batch, sim, sim_batch)
+                tscore_snt.add_batch(sim,sim_batch)
                 #
                 iscore.add_batch(align, ali_batch, sim, sim_batch)
+                iscore_snt.add_batch(sim,sim_batch)
     
             if (iter+1)%self.config.report_every == 0:
                 curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
                 iscore.summarize()
+                iscore_snt.summarize()
                 ILOSS = ILOSS/self.config.report_every
-                sys.stderr.write('{} Epoch {} Iteration {}/{} loss:{:.4f} ({})\n'.format(curr_time,curr_epoch,iter+1,nbatches,ILOSS,iscore.results))
+                sys.stderr.write('{} Epoch {} Iteration {}/{} loss:{:.4f} ({}) ({})\n'.format(curr_time,curr_epoch,iter+1,nbatches,ILOSS,iscore.results,iscore_snt.results))
                 ILOSS = 0.0
                 iscore = Score()
+                iscore_snt = Score()
 
         TLOSS = TLOSS/nbatches
         tscore.summarize()
+        tscore_snt.summarize()
         curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
         sys.stderr.write('{} Epoch {} TRAIN loss={:.4f} ({}) lr={:.4f}'.format(curr_time,curr_epoch,TLOSS,tscore.results,lr))
         unk_src = float(100) * train.nunk_src / train.nsrc
@@ -298,19 +304,23 @@ class Model():
             # iterate over dataset
             VLOSS = 0
             vscore = Score()
+            vscore_snt = Score()
 
             for iter, (src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, sim_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(dev, self.config.batch_size)):
                 fd = self.get_feed_dict(src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, len_src_batch, len_tgt_batch, 0.0)
                 loss, align, align_src, align_tgt, sim = self.sess.run([self.loss, self.align, self.align_src, self.align_tgt, self.cos_similarity], feed_dict=fd)
                 if self.config.error == 'lse':
-                    vscore.add_batch(align_src, ali_src_batch, sim, sim_batch)
+                    vscore.add_batch(align_src, ali_src_batch)
                     vscore.add_batch(align_tgt, ali_tgt_batch)
+                    vscore_snt.add_batch(sim, sim_batch)
                 else:
                     vscore.add_batch(align, ali_batch, sim, sim_batch)
+                    vscore_snt.add_batch(sim, sim_batch)
                 VLOSS += loss # append single value which is a mean of losses of the n examples in the batch
             VLOSS = VLOSS/nbatches
             vscore.summarize()
-            sys.stderr.write('{} Epoch {} VALID loss={:.4f} ({})'.format(curr_time,curr_epoch,VLOSS,vscore.results))
+            vscore_snt.summarize()
+            sys.stderr.write('{} Epoch {} VALID loss={:.4f} ({}) ({})'.format(curr_time,curr_epoch,VLOSS,vscore.results))
             unk_s = float(100) * dev.nunk_src / dev.nsrc
             unk_t = float(100) * dev.nunk_tgt / dev.ntgt
             sys.stderr.write(' Valid set: words={}/{} %ones={:.2f} pair={} unpair={} delete={} extend={} replace={} %unk={:.2f}/{:.2f}\n'.format(dev.nsrc,dev.ntgt,100.0*dev.nones/dev.nlnks,dev.npair,dev.nunpair,dev.ndelete,dev.nextend,dev.nreplace,unk_s,unk_t,VLOSS))

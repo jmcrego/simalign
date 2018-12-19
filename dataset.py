@@ -248,8 +248,6 @@ class Dataset():
 
         return [], [], []
 
-
-
     def get_replace_example(self, index):
         (src, tgt, ali) = self.data[index]
         # to replace, sentences must be at least 10 words
@@ -330,7 +328,6 @@ class Dataset():
         if self.do_shuffle: shuffle(indexs)
         for index in indexs:
             src, tgt, ali = [], [], []
-            sim = 1.0
             if self.annotated:
                 p = random.random() # p in [0.0, 1.0)
                 ###
@@ -349,7 +346,7 @@ class Dataset():
                 pmax = pmin + self.p_extend
                 if p >= pmin and p < pmax: 
                     (src, tgt, ali) = self.get_extend_example(index)
-                    sim = 0.0
+                    sim = -1.0
                     if len(src) and len(tgt): self.nextend += 1
                 ###
                 ### delete
@@ -358,7 +355,7 @@ class Dataset():
                 pmax = pmin + self.p_delete
                 if p >= pmin and p < pmax: 
                     (src, tgt, ali) = self.get_delete_example(index)
-                    sim = 0.0
+                    sim = -1.0
                     if len(src) and len(tgt): self.ndelete += 1
                 ###
                 ### replace
@@ -367,13 +364,14 @@ class Dataset():
                 pmax = pmin + self.p_replace
                 if p >= pmin and p < pmax: 
                     (src, tgt, ali) = self.get_replace_example(index)
-                    sim = 0.0
+                    sim = -1.0
                     if len(src) and len(tgt): self.nreplace += 1
             ###
             ### pair
             ###
             if len(src)==0 and len(tgt)==0:
                 (src, tgt, ali) = self.data[index] 
+                sim = 1.0
                 if len(src) and len(tgt): self.npair += 1
 
             self.nones += len(ali)
