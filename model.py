@@ -396,6 +396,7 @@ class Model():
 
         if tst.annotated:
             score.summarize()
+            score_snt.summarize()
             curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
             sys.stderr.write('{} TEST ({}) ({})'.format(curr_time,score.results,score_snt.results))
             unk_s = float(100) * tst.nunk_src / tst.nsrc
