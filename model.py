@@ -270,10 +270,10 @@ class Model():
                 iscore.add_batch(align_tgt, ali_tgt_batch)
                 iscore_snt.add_batch(sim,sim_batch)
             else:
-                tscore.add_batch(align, ali_batch, sim, sim_batch)
+                tscore.add_batch(align, ali_batch)
                 tscore_snt.add_batch(sim,sim_batch)
                 #
-                iscore.add_batch(align, ali_batch, sim, sim_batch)
+                iscore.add_batch(align, ali_batch)
                 iscore_snt.add_batch(sim,sim_batch)
     
             if (iter+1)%self.config.report_every == 0:
@@ -314,7 +314,7 @@ class Model():
                     vscore.add_batch(align_tgt, ali_tgt_batch)
                     vscore_snt.add_batch(sim, sim_batch)
                 else:
-                    vscore.add_batch(align, ali_batch, sim, sim_batch)
+                    vscore.add_batch(align, ali_batch)
                     vscore_snt.add_batch(sim, sim_batch)
                 VLOSS += loss # append single value which is a mean of losses of the n examples in the batch
             VLOSS = VLOSS/nbatches
@@ -371,6 +371,7 @@ class Model():
         if self.config.show_svg: print "<html>\n<body>"
         nbatches = (len(tst) + self.config.batch_size - 1) // self.config.batch_size
         score = Score()
+        score_snt = Score()
         n_sents = 0
 
         for iter, (src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, sim_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(tst, self.config.batch_size)):
@@ -379,10 +380,12 @@ class Model():
             align, snt_src, snt_tgt, align_src, align_tgt, sim = self.sess.run([self.align, self.snt_src, self.snt_tgt, self.align_src, self.align_tgt, self.cos_similarity], feed_dict=fd)
             if tst.annotated: 
                 if self.config.error == 'lse':
-                    score.add_batch(align_src, ali_src_batch, sim, sim_batch)
+                    score.add_batch(align_src, ali_src_batch)
                     score.add_batch(align_tgt, ali_tgt_batch)
+                    score_snt.add_batch(sim, sim_batch)
                 else:
-                    score.add_batch(align, ali_batch, sim, sim_batch)
+                    score.add_batch(align, ali_batch)
+                    score_snt.add_batch(sim, sim_batch)
 
             for i_sent in range(len(align)):
                 n_sents += 1
@@ -394,7 +397,7 @@ class Model():
         if tst.annotated:
             score.summarize()
             curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
-            sys.stderr.write('{} TEST ({})'.format(curr_time,score.results))
+            sys.stderr.write('{} TEST ({}) ({})'.format(curr_time,score.results,score_snt.results))
             unk_s = float(100) * tst.nunk_src / tst.nsrc
             unk_t = float(100) * tst.nunk_tgt / tst.ntgt
             sys.stderr.write(' Test set: words={}/{} %ones={:.2f} pair={} unpair={} delete={} extend={} replace={} %unk={:.2f}/{:.2f}\n'.format(tst.nsrc,tst.ntgt,100.0*tst.nones/tst.nlnks,tst.npair,tst.nunpair,tst.ndelete,tst.nextend,tst.nreplace,unk_s,unk_t))
