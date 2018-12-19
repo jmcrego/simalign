@@ -281,7 +281,7 @@ class Model():
                 iscore.summarize()
                 iscore_snt.summarize()
                 ILOSS = ILOSS/self.config.report_every
-                sys.stderr.write('{} Epoch {} Iteration {}/{} loss:{:.4f} ({}) ({})\n'.format(curr_time,curr_epoch,iter+1,nbatches,ILOSS,iscore.results,iscore_snt.results))
+                sys.stderr.write('{} Epoch {} Iteration {}/{} loss:{:.4f} wpair({}) spair({})\n'.format(curr_time,curr_epoch,iter+1,nbatches,ILOSS,iscore.results,iscore_snt.results))
                 ILOSS = 0.0
                 iscore = Score()
                 iscore_snt = Score()
@@ -290,7 +290,7 @@ class Model():
         tscore.summarize()
         tscore_snt.summarize()
         curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
-        sys.stderr.write('{} Epoch {} TRAIN loss={:.4f} ({}) lr={:.4f}'.format(curr_time,curr_epoch,TLOSS,tscore.results,lr))
+        sys.stderr.write('{} Epoch {} TRAIN loss={:.4f} wpair({}) spair({}) lr={:.4f}'.format(curr_time,curr_epoch,TLOSS,tscore.results,tscore_snt.results,lr))
         unk_src = float(100) * train.nunk_src / train.nsrc
         unk_tgt = float(100) * train.nunk_tgt / train.ntgt
         sys.stderr.write(' Train set: words={}/{} %ones={:.2f} pair={} unpair={} delete={} extend={} replace={} %unk={:.2f}/{:.2f}\n'.format(train.nsrc,train.ntgt,100.0*train.nones/train.nlnks,train.npair,train.nunpair,train.ndelete,train.nextend,train.nreplace,unk_src,unk_tgt))
@@ -320,7 +320,7 @@ class Model():
             VLOSS = VLOSS/nbatches
             vscore.summarize()
             vscore_snt.summarize()
-            sys.stderr.write('{} Epoch {} VALID loss={:.4f} ({}) ({})'.format(curr_time,curr_epoch,VLOSS,vscore.results))
+            sys.stderr.write('{} Epoch {} VALID loss={:.4f} wpair({}) spair({})'.format(curr_time,curr_epoch,VLOSS,vscore.results,vscore_snt.results))
             unk_s = float(100) * dev.nunk_src / dev.nsrc
             unk_t = float(100) * dev.nunk_tgt / dev.ntgt
             sys.stderr.write(' Valid set: words={}/{} %ones={:.2f} pair={} unpair={} delete={} extend={} replace={} %unk={:.2f}/{:.2f}\n'.format(dev.nsrc,dev.ntgt,100.0*dev.nones/dev.nlnks,dev.npair,dev.nunpair,dev.ndelete,dev.nextend,dev.nreplace,unk_s,unk_t,VLOSS))
@@ -398,7 +398,7 @@ class Model():
             score.summarize()
             score_snt.summarize()
             curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
-            sys.stderr.write('{} TEST ({}) ({})'.format(curr_time,score.results,score_snt.results))
+            sys.stderr.write('{} TEST wpair({}) spair({})'.format(curr_time,score.results,score_snt.results))
             unk_s = float(100) * tst.nunk_src / tst.nsrc
             unk_t = float(100) * tst.nunk_tgt / tst.ntgt
             sys.stderr.write(' Test set: words={}/{} %ones={:.2f} pair={} unpair={} delete={} extend={} replace={} %unk={:.2f}/{:.2f}\n'.format(tst.nsrc,tst.ntgt,100.0*tst.nones/tst.nlnks,tst.npair,tst.nunpair,tst.ndelete,tst.nextend,tst.nreplace,unk_s,unk_t))

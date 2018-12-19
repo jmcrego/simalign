@@ -168,6 +168,12 @@ class Dataset():
                 if self.similar_size(len(src),len(tgt2)): return src, tgt2, []
         return [], [], []
 
+    def first_or_last_within(self, v, minim=3, maxim=9):
+        n = int(random.random() * (maxim-minim)) + minim
+        if len(v) <= n: return v
+        if random.random() < 0.5: return v[:n] #initial n
+        return v[-n:] #return final n
+
     def get_extend_example(self, index):
         (src, tgt, ali) = self.data[index]
         n_rep = 0
@@ -176,14 +182,10 @@ class Dataset():
             if n_rep > self.max_rep: break
             index2 = int(random.random()*len(self.data))
             (src2, tgt2, ali2) = self.data[index2]
-            if len(src2)>=5 and len(tgt2)>=5:
-                if random.random() < 0.5: #extend in src
-                    i = int(random.random() * (len(src2)-3)) + 2
-                    src.extend(src2[i:])
-                else: #extend in tgt
-                    i = int(random.random() * (len(tgt2)-3)) + 2
-                    tgt.extend(tgt2[i:]) 
-                return src, tgt, ali
+            if len(src2) < 6 or len(tgt2) < 6: continue #at least 6 words on both sides
+            if random.random() < 0.5: src.extend(self.first_or_last_within(src2)) #extend in src
+            else: tgt.extend(self.first_or_last_within(tgt2)) #extend in tgt
+            return src, tgt, ali
         return [], [], []
 
     def get_delete_example(self, index):
@@ -198,11 +200,17 @@ class Dataset():
             n_rep += 1
             if n_rep > self.max_rep: break
     
+            n = int(random.random() * 6) + 3 #n in [3, 9)
             if random.random() < 0.5: #delete in src
-                ini = int(random.random() * len(src)) 
-                l = int(random.random() * (len(src)-ini-1)) + 1
-                end = ini + l
-#                print("ini,end=[{}, +{}, {})".format(ini,l,end))
+                n = min(n, len(src)-3) ### there must remain at least 3 words
+                if random.random() < 0.5: #delete initial n
+                    ini = 0
+                    end = ini + n
+                else: #delete last n
+                    ini = len(src) - n - 1
+                    end = len(src)
+                l=end-ini
+#                print("src delete[{}, +{}, {}), len(src)={}".format(ini,l,end,len(src)))
                 src2 = src[:ini] + src[end:]
                 ali2 = []
                 for a in ali:
@@ -223,10 +231,15 @@ class Dataset():
                 return src2, tgt, ali2
 
             else: #delete in tgt
-                ini = int(random.random() * len(tgt)) 
-                l = int(random.random() * (len(tgt)-ini-1)) + 1
-                end = ini + l
-#                print("ini,end=[{}, +{} ,{})".format(ini,l,end))
+                n = min(n, len(tgt)-3) ### there must remain at least 3 words
+                if random.random() < 0.5: #delete initial n
+                    ini = 0
+                    end = ini + n
+                else: #delete last n
+                    ini = len(tgt) - n - 1
+                    end = len(tgt)
+                l=end-ini                    
+#                print("tgt delete[{}, +{}, {}), len(tgt)={}".format(ini,l,end,len(tgt)))
                 tgt2 = tgt[:ini] + tgt[end:]
                 ali2 = []
                 for a in ali:
