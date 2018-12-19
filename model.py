@@ -20,8 +20,6 @@ class Score():
         self.P = 0.0
         self.R = 0.0
         self.F = 0.0
-        self.ok = 0
-        self.ko = 0
 
     def add_batch(self, p, r): ### prediction, reference
         #reference contains:
