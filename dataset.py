@@ -200,16 +200,15 @@ class Dataset():
             n_rep += 1
             if n_rep > self.max_rep: break
     
-            n = int(random.random() * 6) + 3 #n in [3, 9)
+            l = int(random.random() * 6) + 3 #l in [3, 9)
             if random.random() < 0.5: #delete in src
-                n = min(n, len(src)-3) ### there must remain at least 3 words
-                if random.random() < 0.5: #delete initial n
+                l = min(l, len(src)-3) ### there must remain at least 3 words
+                if random.random() < 0.5: #delete initial l
                     ini = 0
-                    end = ini + n
+                    end = ini + l
                 else: #delete last n
-                    ini = len(src) - n - 1
+                    ini = len(src) - l - 1
                     end = len(src)
-                l=end-ini
 #                print("src delete[{}, +{}, {}), len(src)={}".format(ini,l,end,len(src)))
                 src2 = src[:ini] + src[end:]
                 ali2 = []
@@ -231,14 +230,13 @@ class Dataset():
                 return src2, tgt, ali2
 
             else: #delete in tgt
-                n = min(n, len(tgt)-3) ### there must remain at least 3 words
-                if random.random() < 0.5: #delete initial n
+                l = min(l, len(tgt)-3) ### there must remain at least 3 words
+                if random.random() < 0.5: #delete initial l
                     ini = 0
-                    end = ini + n
+                    end = ini + l
                 else: #delete last n
-                    ini = len(tgt) - n - 1
+                    ini = len(tgt) - l - 1
                     end = len(tgt)
-                l=end-ini                    
 #                print("tgt delete[{}, +{}, {}), len(tgt)={}".format(ini,l,end,len(tgt)))
                 tgt2 = tgt[:ini] + tgt[end:]
                 ali2 = []
@@ -264,15 +262,16 @@ class Dataset():
     def get_replace_example(self, index):
         (src, tgt, ali) = self.data[index]
         # to replace, sentences must be at least 10 words
-        if len(src) < 10 or len(tgt) < 10: return [], [], []
+        if len(src) < 6 or len(tgt) < 6: return [], [], []
         n_rep = 0
         while True:
             n_rep += 1
             if n_rep > self.max_rep: break
-    
+
+            l = int(random.random() * 6) + 3 #l in [3, 9) 
             if random.random() < 0.5: #replace in src
-                ini = int(random.random() * len(src)) 
-                l = int(random.random() * (len(src)-ini-1)) + 1
+                l = min(l, len(src)-3) ### there must remain at least 3 words
+                ini = int(random.random() * (len(src)-l)) 
                 end = ini + l
                 index2 = int(random.random()*len(self.data))
                 (src2, tgt2, _) = self.data[index2]
@@ -296,8 +295,8 @@ class Dataset():
                 return src, tgt, ali2
 
             else: #replace in tgt
-                ini = int(random.random() * len(tgt)) 
-                l = int(random.random() * (len(tgt)-ini-1)) + 1
+                l = min(l, len(src)-3) ### there must remain at least 3 words
+                ini = int(random.random() * (len(src)-l)) 
                 end = ini + l
                 index2 = int(random.random()*len(self.data))
                 (src2, tgt2, _) = self.data[index2]
