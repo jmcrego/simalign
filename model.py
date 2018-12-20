@@ -261,7 +261,7 @@ class Model():
         iscore_snt = Score()
         ini_time = time.time()
         for iter, (src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, sim_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(train, self.config.batch_size)):
-            fd = self.get_feed_dict(src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, sim_batch len_src_batch, len_tgt_batch, lr)
+            fd = self.get_feed_dict(src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, sim_batch, len_src_batch, len_tgt_batch, lr)
             _, loss, align, align_src, align_tgt, sim = self.sess.run([self.train_op, self.loss, self.align, self.align_src, self.align_tgt, self.cos_similarity], feed_dict=fd)
             TLOSS += loss
             ILOSS += loss
