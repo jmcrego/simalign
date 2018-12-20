@@ -67,12 +67,12 @@ class Model():
         self.input_src     = tf.placeholder(tf.int32, shape=[None,None],        name="input_src")  # Shape: batch_size x |Fj|  (all sentences Fj are equally sized (padded if needed))  
         self.input_tgt     = tf.placeholder(tf.int32, shape=[None,None],        name="input_tgt")  # Shape: batch_size x |Ei|  (all sentences Ej are equally sized (padded if needed))  
         self.input_ali     = tf.placeholder(tf.float32, shape=[None,None,None], name="input_ali")
-        self.input_ali_src = tf.placeholder(tf.float32, shape=[None,None], name="input_ali_src")
-        self.input_ali_tgt = tf.placeholder(tf.float32, shape=[None,None], name="input_ali_tgt")
-        self.input_sim     = tf.placeholder(tf.float32, shape=[None], name="input_sim")
-        self.len_src       = tf.placeholder(tf.int32, shape=[None], name="len_src")
-        self.len_tgt       = tf.placeholder(tf.int32, shape=[None], name="len_tgt")
-        self.lr            = tf.placeholder(tf.float32, shape=[], name="lr")
+        self.input_ali_src = tf.placeholder(tf.float32, shape=[None,None],      name="input_ali_src")
+        self.input_ali_tgt = tf.placeholder(tf.float32, shape=[None,None],      name="input_ali_tgt")
+        self.input_sim     = tf.placeholder(tf.float32, shape=[None],           name="input_sim")
+        self.len_src       = tf.placeholder(tf.int32, shape=[None],             name="len_src")
+        self.len_tgt       = tf.placeholder(tf.int32, shape=[None],             name="len_tgt")
+        self.lr            = tf.placeholder(tf.float32, shape=[],               name="lr")
 
     def add_model(self):
         BS = tf.shape(self.input_src)[0] #batch size
@@ -193,12 +193,12 @@ class Model():
         with tf.name_scope("loss"):
             self.loss_src = tf.reduce_mean(tf.map_fn(lambda (x,l): tf.reduce_sum(x[:l]), (self.error_src, self.len_src), dtype=tf.float32))
             self.loss_tgt = tf.reduce_mean(tf.map_fn(lambda (x,l): tf.reduce_sum(x[:l]), (self.error_tgt, self.len_tgt), dtype=tf.float32))
-            self.loss = self.loss_tgt + self.loss_src
+            self.wloss = self.loss_tgt + self.loss_src
+#            self.sloss = tf.float32(0.0)
             if self.config.sloss > 0.0:
-                if self.config.error == 'mse':
-                    self.loss += self.config.sloss * tf.reduce_mean(tf.pow(self.cos_similarity - self.input_sim, 2)) #mse
-                else: ### case exp and lse
-                    self.loss += self.config.sloss * tf.reduce_mean(tf.log(1 + tf.exp(self.cos_similarity * -self.input_sim))) #exp
+                if self.config.error == 'mse': self.sloss = tf.reduce_mean(tf.pow(self.cos_similarity - self.input_sim, 2)) #mse
+                else: self.sloss = tf.reduce_mean(tf.log(1 + tf.exp(self.cos_similarity * -self.input_sim))) #exp or lse
+            self.loss = self.wloss + (self.config.sloss * self.sloss)
 
     def add_train(self):
         if   self.config.lr_method == 'adam':     optimizer = tf.train.AdamOptimizer() #self.lr)
@@ -254,7 +254,11 @@ class Model():
         nbatches = (len(train) + self.config.batch_size - 1) // self.config.batch_size
         curr_epoch = self.config.last_epoch + 1
         TLOSS = 0.0 # training loss
+        TLOSS_w = 0.0 # training loss
+        TLOSS_s = 0.0 # training loss
         ILOSS = 0.0 # intermediate loss (average over [config.report_every] iterations)
+        ILOSS_w = 0.0 # intermediate loss (average over [config.report_every] iterations)
+        ILOSS_s = 0.0 # intermediate loss (average over [config.report_every] iterations)
         tscore = Score()
         iscore = Score()
         tscore_snt = Score()
@@ -262,9 +266,13 @@ class Model():
         ini_time = time.time()
         for iter, (src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, sim_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(train, self.config.batch_size)):
             fd = self.get_feed_dict(src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, sim_batch, len_src_batch, len_tgt_batch, lr)
-            _, loss, align, align_src, align_tgt, sim = self.sess.run([self.train_op, self.loss, self.align, self.align_src, self.align_tgt, self.cos_similarity], feed_dict=fd)
+            _, loss, wloss, sloss, align, align_src, align_tgt, sim = self.sess.run([self.train_op, self.loss, self.wloss, self.sloss, self.align, self.align_src, self.align_tgt, self.cos_similarity], feed_dict=fd)
             TLOSS += loss
+            TLOSS_w += wloss
+            TLOSS_s += sloss
             ILOSS += loss
+            ILOSS_w += wloss
+            ILOSS_s += sloss
             if self.config.error == 'lse':
                 tscore.add_batch(align_src, ali_src_batch)
                 tscore.add_batch(align_tgt, ali_tgt_batch)
@@ -285,16 +293,22 @@ class Model():
                 iscore.summarize()
                 iscore_snt.summarize()
                 ILOSS = ILOSS/self.config.report_every
-                sys.stderr.write('{} Epoch {} Iteration {}/{} loss:{:.4f} wrd_pairs({}) snt_pairs({})\n'.format(curr_time,curr_epoch,iter+1,nbatches,ILOSS,iscore.results,iscore_snt.results))
+                ILOSS_w = ILOSS_w/self.config.report_every
+                ILOSS_s = ILOSS_s/self.config.report_every
+                sys.stderr.write('{} Epoch {} Iteration {}/{} loss:{:.4f} wrd_pairs(L{:.4f} {}) snt_pairs(L{:.4f} {})\n'.format(curr_time,curr_epoch,iter+1,nbatches,ILOSS,ILOSS_w,iscore.results,ILOSS_s,iscore_snt.results))
                 ILOSS = 0.0
+                ILOSS_w = 0.0
+                ILOSS_s = 0.0
                 iscore = Score()
                 iscore_snt = Score()
 
         TLOSS = TLOSS/nbatches
+        TLOSS_w = TLOSS_w/nbatches
+        TLOSS_s = TLOSS_s/nbatches
         tscore.summarize()
         tscore_snt.summarize()
         curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
-        sys.stderr.write('{} Epoch {} TRAIN loss={:.4f} wrd_pairs({}) snt_pairs({}) lr={:.4f}'.format(curr_time,curr_epoch,TLOSS,tscore.results,tscore_snt.results,lr))
+        sys.stderr.write('{} Epoch {} TRAIN loss={:.4f} wrd_pairs(L{:.4f} {}) snt_pairs(L{:.4f} {}) lr={:.4f}'.format(curr_time,curr_epoch,TLOSS,TLOSS_w,tscore.results,TLOSS_s,tscore_snt.results,lr))
         unk_src = float(100) * train.nunk_src / train.nsrc
         unk_tgt = float(100) * train.nunk_tgt / train.ntgt
         sys.stderr.write(' Train set: words={}/{} %ones={:.2f} pair={} unpair={} delete={} extend={} replace={} %unk={:.2f}/{:.2f}\n'.format(train.nsrc,train.ntgt,100.0*train.nones/train.nlnks,train.npair,train.nunpair,train.ndelete,train.nextend,train.nreplace,unk_src,unk_tgt))
@@ -307,12 +321,14 @@ class Model():
             nbatches = (len(dev) + self.config.batch_size - 1) // self.config.batch_size
             # iterate over dataset
             VLOSS = 0
+            VLOSS_w = 0
+            VLOSS_s = 0
             vscore = Score()
             vscore_snt = Score()
 
             for iter, (src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, sim_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(dev, self.config.batch_size)):
                 fd = self.get_feed_dict(src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, sim_batch, len_src_batch, len_tgt_batch, 0.0)
-                loss, align, align_src, align_tgt, sim = self.sess.run([self.loss, self.align, self.align_src, self.align_tgt, self.cos_similarity], feed_dict=fd)
+                loss, wloss, sloss, align, align_src, align_tgt, sim = self.sess.run([self.loss, self.wloss, self.sloss, self.align, self.align_src, self.align_tgt, self.cos_similarity], feed_dict=fd)
                 if self.config.error == 'lse':
                     vscore.add_batch(align_src, ali_src_batch)
                     vscore.add_batch(align_tgt, ali_tgt_batch)
@@ -321,10 +337,14 @@ class Model():
                     vscore.add_batch(align, ali_batch)
                     vscore_snt.add_batch(sim, sim_batch)
                 VLOSS += loss # append single value which is a mean of losses of the n examples in the batch
+                VLOSS_w += wloss # append single value which is a mean of losses of the n examples in the batch
+                VLOSS_s += sloss # append single value which is a mean of losses of the n examples in the batch
             VLOSS = VLOSS/nbatches
+            VLOSS_w = VLOSS_w/nbatches
+            VLOSS_s = VLOSS_s/nbatches
             vscore.summarize()
             vscore_snt.summarize()
-            sys.stderr.write('{} Epoch {} VALID loss={:.4f} wrd_pairs({}) snt_pairs({})'.format(curr_time,curr_epoch,VLOSS,vscore.results,vscore_snt.results))
+            sys.stderr.write('{} Epoch {} VALID loss={:.4f} wrd_pairs(L{:.4f} {}) snt_pairs(L{:.4f} {})'.format(curr_time,curr_epoch,VLOSS,VLOSS_w,vscore.results,VLOSS_s,vscore_snt.results))
             unk_s = float(100) * dev.nunk_src / dev.nsrc
             unk_t = float(100) * dev.nunk_tgt / dev.ntgt
             sys.stderr.write(' Valid set: words={}/{} %ones={:.2f} pair={} unpair={} delete={} extend={} replace={} %unk={:.2f}/{:.2f}\n'.format(dev.nsrc,dev.ntgt,100.0*dev.nones/dev.nlnks,dev.npair,dev.nunpair,dev.ndelete,dev.nextend,dev.nreplace,unk_s,unk_t,VLOSS))
