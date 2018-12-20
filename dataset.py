@@ -296,7 +296,7 @@ class Dataset():
                         sys.stderr.write('warning: tgt alignment: {} out of bounds: {}\n'.format(t, tgt))
                         continue
                     if (s<ini or s>=end): ali2.append("{}-{}".format(s,t))
-                print("src: {}".format(" ".join(s for s in src2)))
+                print("src: {}".format(" ".join(s for s in src)))
                 print("ali: {}".format(" ".join(a for a in ali2)))
                 return src, tgt, ali2
 
@@ -324,7 +324,7 @@ class Dataset():
                         sys.stderr.write('warning: tgt alignment: {} out of bounds: {}\n'.format(t,tgt))
                         continue
                     if (t<ini or t>=end): ali2.append("{}-{}".format(s,t))
-                print("tgt: {}".format(" ".join(t for t in tgt2)))
+                print("tgt: {}".format(" ".join(t for t in tgt)))
                 print("ali: {}".format(" ".join(a for a in ali2)))
                 return src, tgt, ali2
 
