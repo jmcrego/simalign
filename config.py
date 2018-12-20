@@ -35,6 +35,7 @@ class Config():
 
    -dropout      FLOAT : dropout ratio [0.3]
    -error       STRING : error function (mse, exp, lse) [mse]
+   -sloss        FLOAT : loss = wloss + sloss*serror [0.0]
    -r            FLOAT : r used when error=='lse' [1.0]
    -aggr        STRING : aggregation function (sum, lse) [sum] NOT USED
    -lr_method   STRING : GD method either: adam, adagrad, adadelta, sgd, rmsprop [adam]
@@ -110,6 +111,7 @@ class Config():
         self.debug = False
         self.mark_unks = False
         self.r = 1.0
+        self.sloss = 0.0
         self.error = "mse"
         self.aggr = "sum"
         self.sim = "last"
@@ -308,6 +310,8 @@ class Config():
                 self.error = argv.pop(0)
             elif (tok=="-aggr" and len(argv)):
                 self.aggr = argv.pop(0)
+            elif (tok=="-sloss" and len(argv)):
+                self.sloss = float(argv.pop(0))
 
             elif (tok=="-sim" and len(argv)):
                 self.sim = argv.pop(0)
