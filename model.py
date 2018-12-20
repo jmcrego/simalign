@@ -69,6 +69,7 @@ class Model():
         self.input_ali     = tf.placeholder(tf.float32, shape=[None,None,None], name="input_ali")
         self.input_ali_src = tf.placeholder(tf.float32, shape=[None,None], name="input_ali_src")
         self.input_ali_tgt = tf.placeholder(tf.float32, shape=[None,None], name="input_ali_tgt")
+        self.input_sim     = tf.placeholder(tf.float32, shape=[None], name="input_sim")
         self.len_src       = tf.placeholder(tf.int32, shape=[None], name="len_src")
         self.len_tgt       = tf.placeholder(tf.int32, shape=[None], name="len_tgt")
         self.lr            = tf.placeholder(tf.float32, shape=[], name="lr")
@@ -235,6 +236,7 @@ class Model():
             self.input_ali: ali,
             self.input_ali_src: ali_src,
             self.input_ali_tgt: ali_tgt,
+            self.input_sim: sim,
             self.len_src: len_src,
             self.len_tgt: len_tgt,
             self.lr: lr
@@ -259,7 +261,7 @@ class Model():
         iscore_snt = Score()
         ini_time = time.time()
         for iter, (src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, sim_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(train, self.config.batch_size)):
-            fd = self.get_feed_dict(src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, len_src_batch, len_tgt_batch, lr)
+            fd = self.get_feed_dict(src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, sim_batch len_src_batch, len_tgt_batch, lr)
             _, loss, align, align_src, align_tgt, sim = self.sess.run([self.train_op, self.loss, self.align, self.align_src, self.align_tgt, self.cos_similarity], feed_dict=fd)
             TLOSS += loss
             ILOSS += loss
@@ -309,7 +311,7 @@ class Model():
             vscore_snt = Score()
 
             for iter, (src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, sim_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(dev, self.config.batch_size)):
-                fd = self.get_feed_dict(src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, len_src_batch, len_tgt_batch, 0.0)
+                fd = self.get_feed_dict(src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, sim_batch, len_src_batch, len_tgt_batch, 0.0)
                 loss, align, align_src, align_tgt, sim = self.sess.run([self.loss, self.align, self.align_src, self.align_tgt, self.cos_similarity], feed_dict=fd)
                 if self.config.error == 'lse':
                     vscore.add_batch(align_src, ali_src_batch)
@@ -377,7 +379,7 @@ class Model():
         n_sents = 0
 
         for iter, (src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, sim_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(tst, self.config.batch_size)):
-            fd = self.get_feed_dict(src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, len_src_batch, len_tgt_batch, 0.0)
+            fd = self.get_feed_dict(src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, sim_batch, len_src_batch, len_tgt_batch, 0.0)
 
             align, snt_src, snt_tgt, align_src, align_tgt, sim = self.sess.run([self.align, self.snt_src, self.snt_tgt, self.align_src, self.align_tgt, self.cos_similarity], feed_dict=fd)
             if tst.annotated: 
