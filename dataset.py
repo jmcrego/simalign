@@ -263,16 +263,20 @@ class Dataset():
         (src, tgt, ali) = self.data[index]
         # to replace, sentences must be at least 10 words
         if len(src) < 6 or len(tgt) < 6: return [], [], []
+        print("SRC: {}".format(" ".join(s for s in src)))
+        print("TGT: {}".format(" ".join(t for t in tgt)))
+        print("ALI: {}".format(" ".join(a for a in ali)))
         n_rep = 0
         while True:
             n_rep += 1
             if n_rep > self.max_rep: break
 
-            l = int(random.random() * 6) + 3 #l in [3, 9) 
+            l = int(random.random() * 6) + 3 #l in [3, 9)
             if random.random() < 0.5: #replace in src
                 l = min(l, len(src)-3) ### there must remain at least 3 words
                 ini = int(random.random() * (len(src)-l)) 
                 end = ini + l
+                print("src delete[{}, +{}, {}), len(src)={}".format(ini,l,end,len(src)))
                 index2 = int(random.random()*len(self.data))
                 (src2, tgt2, _) = self.data[index2]
                 if len(src2) < l: continue
@@ -292,12 +296,15 @@ class Dataset():
                         sys.stderr.write('warning: tgt alignment: {} out of bounds: {}\n'.format(t, tgt))
                         continue
                     if (s<ini or s>=end): ali2.append("{}-{}".format(s,t))
+                print("src: {}".format(" ".join(s for s in src2)))
+                print("ali: {}".format(" ".join(a for a in ali2)))
                 return src, tgt, ali2
 
             else: #replace in tgt
-                l = min(l, len(src)-3) ### there must remain at least 3 words
-                ini = int(random.random() * (len(src)-l)) 
+                l = min(l, len(tgt)-3) ### there must remain at least 3 words
+                ini = int(random.random() * (len(tgt)-l)) 
                 end = ini + l
+                print("tgt delete[{}, +{}, {}), len(tgt)={}".format(ini,l,end,len(tgt)))
                 index2 = int(random.random()*len(self.data))
                 (src2, tgt2, _) = self.data[index2]
                 if len(tgt2) < l: continue
@@ -317,6 +324,8 @@ class Dataset():
                         sys.stderr.write('warning: tgt alignment: {} out of bounds: {}\n'.format(t,tgt))
                         continue
                     if (t<ini or t>=end): ali2.append("{}-{}".format(s,t))
+                print("tgt: {}".format(" ".join(t for t in tgt2)))
+                print("ali: {}".format(" ".join(a for a in ali2)))
                 return src, tgt, ali2
 
         return [], [], []
