@@ -193,8 +193,11 @@ class Model():
             self.loss_src = tf.reduce_mean(tf.map_fn(lambda (x,l): tf.reduce_sum(x[:l]), (self.error_src, self.len_src), dtype=tf.float32))
             self.loss_tgt = tf.reduce_mean(tf.map_fn(lambda (x,l): tf.reduce_sum(x[:l]), (self.error_tgt, self.len_tgt), dtype=tf.float32))
             self.loss = self.loss_tgt + self.loss_src
-            if self.config.sntloss > 0.0:
-                self.loss += self.config.sntloss * tf.reduce_mean(tf.pow(self.cos_similarity * -self.input_ali, 2))
+            if self.config.sloss > 0.0:
+                if self.config.error == 'mse':
+                    self.loss += self.config.sloss * tf.reduce_mean(tf.pow(self.cos_similarity - self.input_ali, 2)) #mse
+                else: ### case exp and lse
+                    self.loss += self.config.sloss * tf.reduce_mean(tf.log(1 + tf.exp(self.cos_similarity * -self.input_ali))) #exp
 
     def add_train(self):
         if   self.config.lr_method == 'adam':     optimizer = tf.train.AdamOptimizer() #self.lr)
