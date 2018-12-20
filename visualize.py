@@ -86,8 +86,8 @@ class Visualize():
     def print_vectors(self,show_last,show_align):
         line = []
         line.append("{:.4f}".format(self.sim))
-        aggr = (sum(self.aggr_src) + sum(self.aggr_tgt)) / np.float32(len(self.src) + len(self.tgt))
-        line.append("{:.4f}".format(aggr))
+#        aggr = (sum(self.aggr_src) + sum(self.aggr_tgt)) / np.float32(len(self.src) + len(self.tgt))
+#        line.append("{:.4f}".format(aggr))
         line.append(" ".join(s for s in self.src))
         line.append(" ".join(t for t in self.tgt))
 
