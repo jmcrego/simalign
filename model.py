@@ -196,9 +196,9 @@ class Model():
             self.wloss = self.loss_tgt + self.loss_src
 #            self.sloss = tf.float32(0.0)
             if self.config.sloss > 0.0:
-                if self.config.error == 'mse': self.sloss = tf.reduce_mean(tf.pow(self.cos_similarity - self.input_sim, 2)) #mse
-                else: self.sloss = tf.reduce_mean(tf.log(1 + tf.exp(self.cos_similarity * -self.input_sim))) #exp or lse
-            self.loss = self.wloss + (self.config.sloss * self.sloss)
+                if self.config.error == 'mse': self.sloss = self.config.sloss * tf.reduce_mean(tf.pow(self.cos_similarity - self.input_sim, 2)) #mse
+                else: self.sloss = self.config.sloss * tf.reduce_mean(tf.log(1 + tf.exp(self.cos_similarity * -self.input_sim))) #exp or lse
+            self.loss = self.wloss + self.sloss
 
     def add_train(self):
         if   self.config.lr_method == 'adam':     optimizer = tf.train.AdamOptimizer() #self.lr)
