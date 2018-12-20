@@ -229,7 +229,7 @@ class Model():
 ### feed_dict #####
 ###################
 
-    def get_feed_dict(self, src, tgt, ali, ali_src, ali_tgt, len_src, len_tgt, lr):
+    def get_feed_dict(self, src, tgt, ali, ali_src, ali_tgt, sim, len_src, len_tgt, lr):
         feed = { 
             self.input_src: src,
             self.input_tgt: tgt,
