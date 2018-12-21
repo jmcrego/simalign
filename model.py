@@ -51,26 +51,26 @@ class Score():
         self.average_sloss = self.sLoss / self.n
 
         p_times_r = p * r
-        T = tf.greater(p_times_r, tf.zeros_like(p_times_r,dtype=p_times_r.dtype)) ### matrix with true predictions
-        F = tf.less(p_times_r, tf.zeros_like(p_times_r,dtype=p_times_r.dtype)) ### matrix with false predictions
-        P = tf.greater(p, tf.zeros_like(p,dtype=p.dtype)) ### matrix with positive predictions (aligned words)
-        N = tf.less(p, tf.zeros_like(p,dtype=p.dtype)) ### matrix with negative predictions (unaligned wods)
+        T = np.greater(p_times_r, np.zeros_like(p_times_r)) ### matrix with true predictions
+        F = np.less(p_times_r, np.zeros_like(p_times_r)) ### matrix with false predictions
+        P = np.greater(p, np.zeros_like(p)) ### matrix with positive predictions (aligned words)
+        N = np.less(p, np.zeros_like(p)) ### matrix with negative predictions (unaligned wods)
         ### Attention: predictions p==0.000 are not considered 
-        self.TP += tf.count_nonzero(tf.logical_and(T, P))
-        self.TN += tf.count_nonzero(tf.logical_and(T, N))
-        self.FP += tf.count_nonzero(tf.logical_and(F, P))
-        self.FN += tf.count_nonzero(tf.logical_and(F, N))
+        self.TP += np.count_nonzero(np.logical_and(T, P))
+        self.TN += np.count_nonzero(np.logical_and(T, N))
+        self.FP += np.count_nonzero(np.logical_and(F, P))
+        self.FN += np.count_nonzero(np.logical_and(F, N))
 
         sp_times_sr = sp * sr
-        sT = tf.greater(sp_times_sr, tf.zeros_like(sp_times_sr,dtype=sp_times_sr.dtype)) ### matrix with true predictions
-        sF = tf.less(sp_times_sr, tf.zeros_like(sp_times_sr,dtype=sp_times_sr.dtype)) ### matrix with false predictions
-        sP = tf.greater(sp, tf.zeros_like(sp,dtype=sp.dtype)) ### matrix with positive predictions (aligned words)
-        sN = tf.less(sp, tf.zeros_like(sp,dtype=sp.dtype)) ### matrix with negative predictions (unaligned wods)
+        sT = np.greater(sp_times_sr, np.zeros_like(sp_times_sr)) ### matrix with true predictions
+        sF = np.less(sp_times_sr, np.zeros_like(sp_times_sr)) ### matrix with false predictions
+        sP = np.greater(sp, np.zeros_like(sp)) ### matrix with positive predictions (aligned words)
+        sN = np.less(sp, np.zeros_like(sp)) ### matrix with negative predictions (unaligned wods)
         ### Attention: predictions p==0.000 are not considered 
-        self.sTP += tf.count_nonzero(tf.logical_and(sT, sP))
-        self.sTN += tf.count_nonzero(tf.logical_and(sT, sN))
-        self.sFP += tf.count_nonzero(tf.logical_and(sF, sP))
-        self.sFN += tf.count_nonzero(tf.logical_and(sF, sN))
+        self.sTP += np.count_nonzero(np.logical_and(sT, sP))
+        self.sTN += np.count_nonzero(np.logical_and(sT, sN))
+        self.sFP += np.count_nonzero(np.logical_and(sF, sP))
+        self.sFN += np.count_nonzero(np.logical_and(sF, sN))
 
     def summarize(self):
         self.A, self.P, self.R, self.F = 0.0, 0.0, 0.0, 0.0
@@ -306,8 +306,8 @@ class Model():
             fd = self.get_feed_dict(src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, sim_batch, len_src_batch, len_tgt_batch, lr)
             _, loss, wloss, sloss, align, align_src, align_tgt, sim = self.sess.run([self.train_op, self.loss, self.wloss, self.sloss, self.align, self.align_src, self.align_tgt, self.cos_similarity], feed_dict=fd)
             if self.config.error == 'lse':
-                tscore.add_batch(tf.concat([align_src,align_tgt],1), tf.concat([ali_src_batch,ali_tgt_batch],1), sim, sim_batch, loss, wloss, sloss)
-                iscore.add_batch(tf.concat([align_src,align_tgt],1), tf.concat([ali_src_batch,ali_tgt_batch],1), sim, sim_batch, loss, wloss, sloss)
+                tscore.add_batch(np.concatenate([align_src,align_tgt],1), np.concatenate([ali_src_batch,ali_tgt_batch],1), sim, sim_batch, loss, wloss, sloss)
+                iscore.add_batch(np.concatenate([align_src,align_tgt],1), np.concatenate([ali_src_batch,ali_tgt_batch],1), sim, sim_batch, loss, wloss, sloss)
             else:
                 tscore.add_batch(align, ali_batch, sim, sim_batch, loss, wloss, sloss)
                 iscore.add_batch(align, ali_batch, sim, sim_batch, loss, wloss, sloss)
@@ -344,7 +344,7 @@ class Model():
                 fd = self.get_feed_dict(src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, sim_batch, len_src_batch, len_tgt_batch, 0.0)
                 loss, wloss, sloss, align, align_src, align_tgt, sim = self.sess.run([self.loss, self.wloss, self.sloss, self.align, self.align_src, self.align_tgt, self.cos_similarity], feed_dict=fd)
                 if self.config.error == 'lse':
-                    vscore.add_batch(tf.concat([align_src,align_tgt],1), tf.concat([ali_src_batch,ali_tgt_batch],1), sim, sim_batch, loss, wloss, sloss)
+                    vscore.add_batch(np.concatenate([align_src,align_tgt],1), np.concatenate([ali_src_batch,ali_tgt_batch],1), sim, sim_batch, loss, wloss, sloss)
                 else:
                     vscore.add_batch(align, ali_batch, sim, sim_batch, loss, wloss, sloss)
             sys.stderr.write('{} Epoch {} VALID ({})'.format(curr_time,curr_epoch,vscore.summarize()))
@@ -386,21 +386,20 @@ class Model():
         if self.config.show_svg: print "<html>\n<body>"
         nbatches = (len(tst) + self.config.batch_size - 1) // self.config.batch_size
         score = Score()
-        score_snt = Score()
+        n_pos = 0
         n_sents = 0
 
         for iter, (src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, sim_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(tst, self.config.batch_size)):
             fd = self.get_feed_dict(src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, sim_batch, len_src_batch, len_tgt_batch, 0.0)
 
             align, snt_src, snt_tgt, align_src, align_tgt, sim = self.sess.run([self.align, self.snt_src, self.snt_tgt, self.align_src, self.align_tgt, self.cos_similarity], feed_dict=fd)
-            if tst.annotated: 
+            n_pos += sum(np.greater(sim,np.zeros_like(sim)))
+
+            if tst.annotated:
                 if self.config.error == 'lse':
-                    score.add_batch(align_src, ali_src_batch)
-                    score.add_batch(align_tgt, ali_tgt_batch)
-                    score_snt.add_batch(sim, sim_batch)
+                    score.add_batch(np.concatenate([align_src,align_tgt],1), np.concatenate([ali_src_batch,ali_tgt_batch],1), sim, sim_batch, 0.0, 0.0, 0.0)
                 else:
-                    score.add_batch(align, ali_batch)
-                    score_snt.add_batch(sim, sim_batch)
+                    score.add_batch(align, ali_batch, sim, sim_batch, 0.0, 0.0, 0.0)
 
             for i_sent in range(len(align)):
                 n_sents += 1
@@ -410,14 +409,13 @@ class Model():
                 else: v.print_vectors(self.config.show_sim,self.config.show_align)
 
         if tst.annotated:
-            score.summarize()
-            score_snt.summarize()
             curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
-            sys.stderr.write('{} TEST wrd_pairs({}) snt_pairs({})'.format(curr_time,score.results,score_snt.results))
+            sys.stderr.write('{} TEST ({})'.format(curr_time,score.summarize()))
             unk_s = float(100) * tst.nunk_src / tst.nsrc
             unk_t = float(100) * tst.nunk_tgt / tst.ntgt
             sys.stderr.write(' Test set: words={}/{} %ones={:.2f} pair={} unpair={} delete={} extend={} replace={} %unk={:.2f}/{:.2f}\n'.format(tst.nsrc,tst.ntgt,100.0*tst.nones/tst.nlnks,tst.npair,tst.nunpair,tst.ndelete,tst.nextend,tst.nreplace,unk_s,unk_t))
 
+        print("similar = {} out of {} {:.2f}".format(n_pos,n_sents,100.0*n_pos/n_sents))
         if self.config.show_svg: print "</body>\n</html>"
 
 ###################
