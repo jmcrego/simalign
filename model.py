@@ -416,7 +416,7 @@ class Model():
             sys.stderr.write(' Test set: words={}/{} %ones={:.2f} pair={} unpair={} delete={} extend={} replace={} %unk={:.2f}/{:.2f}\n'.format(tst.nsrc,tst.ntgt,100.0*tst.nones/tst.nlnks,tst.npair,tst.nunpair,tst.ndelete,tst.nextend,tst.nreplace,unk_s,unk_t))
 
         if self.config.show_svg: print "</body>\n</html>"
-        sys.stderr.write("similar = {} out of {} {:.2f}\n".format(n_pos,n_sents,100.0*n_pos/n_sents))
+        sys.stderr.write("similar = {} out of {} {:.2f}\%\n".format(n_pos,n_sents,100.0*n_pos/n_sents))
 
 ###################
 ### session #######
