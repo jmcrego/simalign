@@ -193,11 +193,13 @@ class Model():
         with tf.name_scope("loss"):
             self.loss_src = tf.reduce_mean(tf.map_fn(lambda (x,l): tf.reduce_sum(x[:l]), (self.error_src, self.len_src), dtype=tf.float32))
             self.loss_tgt = tf.reduce_mean(tf.map_fn(lambda (x,l): tf.reduce_sum(x[:l]), (self.error_tgt, self.len_tgt), dtype=tf.float32))
-            self.wloss = self.loss_tgt + self.loss_src
-#            self.sloss = tf.float32(0.0)
+            self.wloss = (self.loss_tgt + self.loss_src) / 2.0
             if self.config.sloss > 0.0:
                 if self.config.error == 'mse': self.sloss = self.config.sloss * tf.reduce_mean(tf.pow(self.cos_similarity - self.input_sim, 2)) #mse
                 else: self.sloss = self.config.sloss * tf.reduce_mean(tf.log(1 + tf.exp(self.cos_similarity * -self.input_sim))) #exp or lse
+            else:
+                self.sloss = tf.constant(0.0, dtype=float32)
+
             self.loss = self.wloss + self.sloss
 
     def add_train(self):
