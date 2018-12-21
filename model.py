@@ -406,7 +406,7 @@ class Model():
                 v = Visualize(n_sents,src_batch[i_sent],tgt_batch[i_sent],raw_src_batch[i_sent],raw_tgt_batch[i_sent],sim[i_sent],align[i_sent],align_src[i_sent],align_tgt[i_sent],snt_src[i_sent],snt_tgt[i_sent],self.config.mark_unks)
                 if self.config.show_svg: v.print_svg()
                 elif self.config.show_matrix: v.print_matrix()
-                else: v.print_vectors(self.config.show_sim,self.config.show_align,True)
+                else: v.print_vectors(self.config.show_sim,self.config.show_align)
 
         if tst.annotated:
             curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
