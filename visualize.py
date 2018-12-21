@@ -83,11 +83,12 @@ class Visualize():
         print("<br>\n<svg width=\"200\" height=\"20\">")
         print("<text x=\"{}\" y=\"10\" fill=\"black\" font-family=\"Courier\" font-size=\"8\"\">{:+.4f}</text>".format(start_x,self.sim))
 
-    def print_vectors(self,show_last,show_align):
+    def print_vectors(self,show_last,show_align,show_aggr_sim=False):
         line = []
         line.append("{:.4f}".format(self.sim))
-#        aggr = (sum(self.aggr_src) + sum(self.aggr_tgt)) / np.float32(len(self.src) + len(self.tgt))
-#        line.append("{:.4f}".format(aggr))
+        if show_aggrsim:
+            aggr = (sum(self.aggr_src) + sum(self.aggr_tgt)) / np.float32(len(self.src) + len(self.tgt))
+            line.append("{:.4f}".format(aggr))
         line.append(" ".join(s for s in self.src))
         line.append(" ".join(t for t in self.tgt))
 
