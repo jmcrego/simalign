@@ -47,6 +47,8 @@ class Score():
         self.sLoss += sl
         self.n += 1 #number of batches added
         self.average_loss = self.Loss / self.n
+        self.average_wloss = self.wLoss / self.n
+        self.average_sloss = self.sLoss / self.n
 
         p_times_r = p * r
         T = tf.greater(p_times_r, tf.zeros_like(p_times_r,dtype=p_times_r.dtype)) ### matrix with true predictions
@@ -83,11 +85,7 @@ class Score():
         if self.sP + self.sR > 0.0: self.sF = 2. * self.sP * self.sR / (self.sP + self.sR) #F-measure
         if self.sTP + self.sTN + self.sFP + self.sFN > 0: self.sA = 1.0 * (self.sTP + self.sTN) / (self.sTP + self.sTN + self.sFP + self.sFN) #Accuracy
 
-        self.LOSS = self.Loss / self.n
-        self.wLOSS = self.wLoss / self.n
-        self.sLOSS = self.sLoss / self.n
-
-        losses = "L{:.4f},wL{:.4f},sL{:.4f}".format(self.LOSS,self.wLOSS,self.sLOSS)
+        losses = "L{:.4f},wL{:.4f},sL{:.4f}".format(self.average_loss,self.average_wloss,self.average_sloss)
         wresults = "A{:.4f},P{:.4f},R{:.4f},F{:.4f}".format(self.A,self.P,self.R,self.F)
         sresults = "A{:.4f},P{:.4f},R{:.4f},F{:.4f}".format(self.sA,self.sP,self.sR,self.sF)
         return "{} | {} | {}".format(losses, wresults, sresults)
@@ -309,8 +307,10 @@ class Model():
             _, loss, wloss, sloss, align, align_src, align_tgt, sim = self.sess.run([self.train_op, self.loss, self.wloss, self.sloss, self.align, self.align_src, self.align_tgt, self.cos_similarity], feed_dict=fd)
             if self.config.error == 'lse':
                 tscore.add_batch(tf.concat([align_src,align_tgt],1), tf.concat([ali_src_batch,ali_tgt_batch],1), sim, sim_batch, loss, wloss, sloss)
+                iscore.add_batch(tf.concat([align_src,align_tgt],1), tf.concat([ali_src_batch,ali_tgt_batch],1), sim, sim_batch, loss, wloss, sloss)
             else:
                 tscore.add_batch(align, ali_batch, sim, sim_batch, loss, wloss, sloss)
+                iscore.add_batch(align, ali_batch, sim, sim_batch, loss, wloss, sloss)
     
             if (iter+1)%self.config.report_every == 0:
                 curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
