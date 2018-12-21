@@ -350,7 +350,7 @@ class Model():
             sys.stderr.write('{} Epoch {} VALID ({})'.format(curr_time,curr_epoch,vscore.summarize()))
             unk_s = float(100) * dev.nunk_src / dev.nsrc
             unk_t = float(100) * dev.nunk_tgt / dev.ntgt
-            sys.stderr.write(' Valid set: words={}/{} %ones={:.2f} pair={} unpair={} delete={} extend={} replace={} %unk={:.2f}/{:.2f}\n'.format(dev.nsrc,dev.ntgt,100.0*dev.nones/dev.nlnks,dev.npair,dev.nunpair,dev.ndelete,dev.nextend,dev.nreplace,unk_s,unk_t,VLOSS))
+            sys.stderr.write(' Valid set: words={}/{} %ones={:.2f} pair={} unpair={} delete={} extend={} replace={} %unk={:.2f}/{:.2f}\n'.format(dev.nsrc,dev.ntgt,100.0*dev.nones/dev.nlnks,dev.npair,dev.nunpair,dev.ndelete,dev.nextend,dev.nreplace,unk_s,unk_t))
             #keep records
             self.config.vloss = vscore.average_loss
             self.config.vA = vscore.A
