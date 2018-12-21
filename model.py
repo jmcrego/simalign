@@ -12,6 +12,7 @@ from visualize import Visualize
 
 class Score():
     def __init__(self):
+        ### word pair results
         self.TP = 0
         self.TN = 0
         self.FP = 0
@@ -20,22 +21,54 @@ class Score():
         self.P = 0.0
         self.R = 0.0
         self.F = 0.0
+        ### sentence pair results
+        self.sTP = 0
+        self.sTN = 0
+        self.sFP = 0
+        self.sFN = 0
+        self.sA = 0.0
+        self.sP = 0.0
+        self.sR = 0.0
+        self.sF = 0.0
+        ### losses
+        self.average_loss = 0.0
+        self.Loss = 0.0
+        self.wLoss = 0.0
+        self.sLoss = 0.0
+        self.n = 0
 
-    def add_batch(self, p, r): ### prediction, reference
+    def add_batch(self, p, r, sp, sr, l, wl, sl): ### prediction, reference
         #reference contains:
         # +1: aligned
         # -1: unaligned
         #  0: padded
+        self.Loss += l
+        self.wLoss += wl
+        self.sLoss += sl
+        self.n += 1 #number of batches added
+        self.average_loss = self.Loss / self.n
+
         p_times_r = p * r
-        T = np.greater(p_times_r, np.zeros_like(r)) ### matrix with true predictions
-        F = np.less(p_times_r, np.zeros_like(r)) ### matrix with false predictions
-        P = np.greater(p, np.zeros_like(r)) ### matrix with positive predictions (aligned words)
-        N = np.less(p, np.zeros_like(r)) ### matrix with negative predictions (unaligned wods)
+        T = tf.greater(p_times_r, tf.zeros_like(p_times_r,dtype=p_times_r.dtype)) ### matrix with true predictions
+        F = tf.less(p_times_r, tf.zeros_like(p_times_r,dtype=p_times_r.dtype)) ### matrix with false predictions
+        P = tf.greater(p, tf.zeros_like(p,dtype=p.dtype)) ### matrix with positive predictions (aligned words)
+        N = tf.less(p, tf.zeros_like(p,dtype=p.dtype)) ### matrix with negative predictions (unaligned wods)
         ### Attention: predictions p==0.000 are not considered 
-        self.TP += np.count_nonzero(np.logical_and(T, P))
-        self.TN += np.count_nonzero(np.logical_and(T, N))
-        self.FP += np.count_nonzero(np.logical_and(F, P))
-        self.FN += np.count_nonzero(np.logical_and(F, N))
+        self.TP += tf.count_nonzero(tf.logical_and(T, P))
+        self.TN += tf.count_nonzero(tf.logical_and(T, N))
+        self.FP += tf.count_nonzero(tf.logical_and(F, P))
+        self.FN += tf.count_nonzero(tf.logical_and(F, N))
+
+        sp_times_sr = sp * sr
+        sT = tf.greater(sp_times_sr, tf.zeros_like(sp_times_sr,dtype=sp_times_sr.dtype)) ### matrix with true predictions
+        sF = tf.less(sp_times_sr, tf.zeros_like(sp_times_sr,dtype=sp_times_sr.dtype)) ### matrix with false predictions
+        sP = tf.greater(sp, tf.zeros_like(sp,dtype=sp.dtype)) ### matrix with positive predictions (aligned words)
+        sN = tf.less(sp, tf.zeros_like(sp,dtype=sp.dtype)) ### matrix with negative predictions (unaligned wods)
+        ### Attention: predictions p==0.000 are not considered 
+        self.sTP += tf.count_nonzero(tf.logical_and(sT, sP))
+        self.sTN += tf.count_nonzero(tf.logical_and(sT, sN))
+        self.sFP += tf.count_nonzero(tf.logical_and(sF, sP))
+        self.sFN += tf.count_nonzero(tf.logical_and(sF, sN))
 
     def summarize(self):
         self.A, self.P, self.R, self.F = 0.0, 0.0, 0.0, 0.0
@@ -43,8 +76,21 @@ class Score():
         if self.TP + self.FN > 0: self.R = 1. * self.TP / (self.TP + self.FN) #true positives out of all that were actually positive
         if self.P + self.R > 0.0: self.F = 2. * self.P * self.R / (self.P + self.R) #F-measure
         if self.TP + self.TN + self.FP + self.FN > 0: self.A = 1.0 * (self.TP + self.TN) / (self.TP + self.TN + self.FP + self.FN) #Accuracy
-#        self.results = "A{:.4f},P{:.4f},R{:.4f},F{:.4f} | TP:{},TN:{},FP:{},FN:{} | {:.2f} of {}".format(self.A,self.P,self.R,self.F,self.TP,self.TN,self.FP,self.FN,self.ok/np.float32(self.ko+self.ok),self.ko+self.ok)
-        self.results = "A{:.4f},P{:.4f},R{:.4f},F{:.4f}".format(self.A,self.P,self.R,self.F)
+
+        self.sA, self.sP, self.sR, self.sF = 0.0, 0.0, 0.0, 0.0
+        if self.sTP + self.sFP > 0: self.sP = 1. * self.sTP / (self.sTP + self.sFP) #true positives out of all that were predicted positive
+        if self.sTP + self.sFN > 0: self.sR = 1. * self.sTP / (self.sTP + self.sFN) #true positives out of all that were actually positive
+        if self.sP + self.sR > 0.0: self.sF = 2. * self.sP * self.sR / (self.sP + self.sR) #F-measure
+        if self.sTP + self.sTN + self.sFP + self.sFN > 0: self.sA = 1.0 * (self.sTP + self.sTN) / (self.sTP + self.sTN + self.sFP + self.sFN) #Accuracy
+
+        self.LOSS = self.Loss / self.n
+        self.wLOSS = self.wLoss / self.n
+        self.sLOSS = self.sLoss / self.n
+
+        losses = "L{:.4f},wL{:.4f},sL{:.4f}".format(self.LOSS,self.wLOSS,self.sLOSS)
+        wresults = "A{:.4f},P{:.4f},R{:.4f},F{:.4f}".format(self.A,self.P,self.R,self.F)
+        sresults = "A{:.4f},P{:.4f},R{:.4f},F{:.4f}".format(self.sA,self.sP,self.sR,self.sF)
+        return "{} | {} | {}".format(losses, wresults, sresults)
 
 class Model():
     def __init__(self, config):
@@ -198,7 +244,7 @@ class Model():
                 if self.config.error == 'mse': self.sloss = self.config.sloss * tf.reduce_mean(tf.pow(self.cos_similarity - self.input_sim, 2)) #mse
                 else: self.sloss = self.config.sloss * tf.reduce_mean(tf.log(1 + tf.exp(self.cos_similarity * -self.input_sim))) #exp or lse
             else:
-                self.sloss = tf.constant(0.0, dtype=float32)
+                self.sloss = tf.constant(0.0, dtype=tf.float32)
 
             self.loss = self.wloss + self.sloss
 
@@ -255,106 +301,29 @@ class Model():
         #######################
         nbatches = (len(train) + self.config.batch_size - 1) // self.config.batch_size
         curr_epoch = self.config.last_epoch + 1
-        TLOSS = 0.0 # training loss
-        TLOSS_w = 0.0 # training loss
-        TLOSS_s = 0.0 # training loss
-        ILOSS = 0.0 # intermediate loss (average over [config.report_every] iterations)
-        ILOSS_w = 0.0 # intermediate loss (average over [config.report_every] iterations)
-        ILOSS_s = 0.0 # intermediate loss (average over [config.report_every] iterations)
-        tscore = Score()
-        iscore = Score()
-        tscore_snt = Score()
-        iscore_snt = Score()
+        tscore = Score() #training scores
+        iscore = Score() #intermediate scores
         ini_time = time.time()
         for iter, (src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, sim_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(train, self.config.batch_size)):
             fd = self.get_feed_dict(src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, sim_batch, len_src_batch, len_tgt_batch, lr)
             _, loss, wloss, sloss, align, align_src, align_tgt, sim = self.sess.run([self.train_op, self.loss, self.wloss, self.sloss, self.align, self.align_src, self.align_tgt, self.cos_similarity], feed_dict=fd)
-            TLOSS += loss
-            TLOSS_w += wloss
-            TLOSS_s += sloss
-            ILOSS += loss
-            ILOSS_w += wloss
-            ILOSS_s += sloss
             if self.config.error == 'lse':
-                tscore.add_batch(align_src, ali_src_batch)
-                tscore.add_batch(align_tgt, ali_tgt_batch)
-                tscore_snt.add_batch(sim,sim_batch)
-                #
-                iscore.add_batch(align_src, ali_src_batch)
-                iscore.add_batch(align_tgt, ali_tgt_batch)
-                iscore_snt.add_batch(sim,sim_batch)
+                tscore.add_batch(tf.concat([align_src,align_tgt],1), tf.concat([ali_src_batch,ali_tgt_batch],1), sim, sim_batch, loss, wloss, sloss)
             else:
-                tscore.add_batch(align, ali_batch)
-                tscore_snt.add_batch(sim,sim_batch)
-                #
-                iscore.add_batch(align, ali_batch)
-                iscore_snt.add_batch(sim,sim_batch)
+                tscore.add_batch(align, ali_batch, sim, sim_batch, loss, wloss, sloss)
     
             if (iter+1)%self.config.report_every == 0:
                 curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
-                iscore.summarize()
-                iscore_snt.summarize()
-                ILOSS = ILOSS/self.config.report_every
-                ILOSS_w = ILOSS_w/self.config.report_every
-                ILOSS_s = ILOSS_s/self.config.report_every
-                sys.stderr.write('{} Epoch {} Iteration {}/{} loss:{:.4f} wrd_pairs(L{:.4f} {}) snt_pairs(L{:.4f} {})\n'.format(curr_time,curr_epoch,iter+1,nbatches,ILOSS,ILOSS_w,iscore.results,ILOSS_s,iscore_snt.results))
-                ILOSS = 0.0
-                ILOSS_w = 0.0
-                ILOSS_s = 0.0
+                sys.stderr.write('{} Epoch {} Iteration {}/{} ({})\n'.format(curr_time,curr_epoch,iter+1,nbatches,iscore.summarize()))
                 iscore = Score()
-                iscore_snt = Score()
 
-        TLOSS = TLOSS/nbatches
-        TLOSS_w = TLOSS_w/nbatches
-        TLOSS_s = TLOSS_s/nbatches
-        tscore.summarize()
-        tscore_snt.summarize()
         curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
-        sys.stderr.write('{} Epoch {} TRAIN loss={:.4f} wrd_pairs(L{:.4f} {}) snt_pairs(L{:.4f} {}) lr={:.4f}'.format(curr_time,curr_epoch,TLOSS,TLOSS_w,tscore.results,TLOSS_s,tscore_snt.results,lr))
+        sys.stderr.write('{} Epoch {} TRAIN lr={:.4f} ({})'.format(curr_time,curr_epoch,lr,tscore.summarize()))
         unk_src = float(100) * train.nunk_src / train.nsrc
         unk_tgt = float(100) * train.nunk_tgt / train.ntgt
         sys.stderr.write(' Train set: words={}/{} %ones={:.2f} pair={} unpair={} delete={} extend={} replace={} %unk={:.2f}/{:.2f}\n'.format(train.nsrc,train.ntgt,100.0*train.nones/train.nlnks,train.npair,train.nunpair,train.ndelete,train.nextend,train.nreplace,unk_src,unk_tgt))
-
-        ##########################
-        # evaluate over devset ###
-        ##########################
-        VLOSS = 0.0
-        if dev is not None:
-            nbatches = (len(dev) + self.config.batch_size - 1) // self.config.batch_size
-            # iterate over dataset
-            VLOSS = 0
-            VLOSS_w = 0
-            VLOSS_s = 0
-            vscore = Score()
-            vscore_snt = Score()
-
-            for iter, (src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, sim_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(dev, self.config.batch_size)):
-                fd = self.get_feed_dict(src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, sim_batch, len_src_batch, len_tgt_batch, 0.0)
-                loss, wloss, sloss, align, align_src, align_tgt, sim = self.sess.run([self.loss, self.wloss, self.sloss, self.align, self.align_src, self.align_tgt, self.cos_similarity], feed_dict=fd)
-                if self.config.error == 'lse':
-                    vscore.add_batch(align_src, ali_src_batch)
-                    vscore.add_batch(align_tgt, ali_tgt_batch)
-                    vscore_snt.add_batch(sim, sim_batch)
-                else:
-                    vscore.add_batch(align, ali_batch)
-                    vscore_snt.add_batch(sim, sim_batch)
-                VLOSS += loss # append single value which is a mean of losses of the n examples in the batch
-                VLOSS_w += wloss # append single value which is a mean of losses of the n examples in the batch
-                VLOSS_s += sloss # append single value which is a mean of losses of the n examples in the batch
-            VLOSS = VLOSS/nbatches
-            VLOSS_w = VLOSS_w/nbatches
-            VLOSS_s = VLOSS_s/nbatches
-            vscore.summarize()
-            vscore_snt.summarize()
-            sys.stderr.write('{} Epoch {} VALID loss={:.4f} wrd_pairs(L{:.4f} {}) snt_pairs(L{:.4f} {})'.format(curr_time,curr_epoch,VLOSS,VLOSS_w,vscore.results,VLOSS_s,vscore_snt.results))
-            unk_s = float(100) * dev.nunk_src / dev.nsrc
-            unk_t = float(100) * dev.nunk_tgt / dev.ntgt
-            sys.stderr.write(' Valid set: words={}/{} %ones={:.2f} pair={} unpair={} delete={} extend={} replace={} %unk={:.2f}/{:.2f}\n'.format(dev.nsrc,dev.ntgt,100.0*dev.nones/dev.nlnks,dev.npair,dev.nunpair,dev.ndelete,dev.nextend,dev.nreplace,unk_s,unk_t,VLOSS))
-
-        #################################
-        #keep record of current epoch ###
-        #################################
-        self.config.tloss = TLOSS
+        #keep records
+        self.config.tloss = tscore.average_loss
         self.config.tA = tscore.A
         self.config.tP = tscore.P
         self.config.tR = tscore.R
@@ -363,14 +332,34 @@ class Model():
         self.config.seconds = "{:.2f}".format(time.time() - ini_time)
         self.config.last_epoch += 1
         self.save_session(self.config.last_epoch)
+
+        ##########################
+        # evaluate over devset ###
+        ##########################
+        vscore = Score() #validation score
         if dev is not None:
-            self.config.vloss = VLOSS
+            nbatches = (len(dev) + self.config.batch_size - 1) // self.config.batch_size
+            # iterate over dataset
+            for iter, (src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, sim_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(dev, self.config.batch_size)):
+                fd = self.get_feed_dict(src_batch, tgt_batch, ali_batch, ali_src_batch, ali_tgt_batch, sim_batch, len_src_batch, len_tgt_batch, 0.0)
+                loss, wloss, sloss, align, align_src, align_tgt, sim = self.sess.run([self.loss, self.wloss, self.sloss, self.align, self.align_src, self.align_tgt, self.cos_similarity], feed_dict=fd)
+                if self.config.error == 'lse':
+                    vscore.add_batch(tf.concat([align_src,align_tgt],1), tf.concat([ali_src_batch,ali_tgt_batch],1), sim, sim_batch, loss, wloss, sloss)
+                else:
+                    vscore.add_batch(align, ali_batch, sim, sim_batch, loss, wloss, sloss)
+            sys.stderr.write('{} Epoch {} VALID ({})'.format(curr_time,curr_epoch,vscore.summarize()))
+            unk_s = float(100) * dev.nunk_src / dev.nsrc
+            unk_t = float(100) * dev.nunk_tgt / dev.ntgt
+            sys.stderr.write(' Valid set: words={}/{} %ones={:.2f} pair={} unpair={} delete={} extend={} replace={} %unk={:.2f}/{:.2f}\n'.format(dev.nsrc,dev.ntgt,100.0*dev.nones/dev.nlnks,dev.npair,dev.nunpair,dev.ndelete,dev.nextend,dev.nreplace,unk_s,unk_t,VLOSS))
+            #keep records
+            self.config.vloss = vscore.average_loss
             self.config.vA = vscore.A
             self.config.vP = vscore.P
             self.config.vR = vscore.R
             self.config.vF = vscore.F
+
         self.config.write_config()
-        return VLOSS, curr_epoch
+        return vscore.average_loss, curr_epoch
 
 
     def learn(self, train, dev, n_epochs):
