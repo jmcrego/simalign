@@ -25,7 +25,7 @@ class Embeddings():
         if file is not None:
             #with io.open(file, 'r', encoding='utf-8', newline='\n', errors='ignore') as f:
             if file.endswith('.gz'): f = gzip.open(file, 'rb')
-            else: f = io.open(file, 'r', encoding='utf-8', newline='\n', errors='ignore')
+            else: f = io.open(file, 'rb')
 
             self.num, self.dim = map(int, f.readline().split())
             i = 0
@@ -64,7 +64,8 @@ class Vocab():
         self.idx_to_tok.append(str_pad)
         self.tok_to_idx[str_pad] = len(self.tok_to_idx) #1
         nline = 0
-        with io.open(dict_file, 'r', encoding='utf-8', newline='\n', errors='ignore') as f:
+#        with io.open(dict_file, 'r', encoding='utf-8', newline='\n', errors='ignore') as f:
+        with io.open(dict_file, 'rb') as f:
             for line in f:
 #        for line in [line.rstrip('\n') for line in open(dict_file)]:
                 nline += 1
@@ -116,8 +117,9 @@ class Dataset():
         self.max_rep = 100
 
 #        with io.open(self.file, 'r', encoding='utf-8', newline='\n', errors='ignore') as f:
+#        else: f = io.open(self.file, 'r', encoding='utf-8', newline='\n', errors='ignore')
         if self.file.endswith('.gz'): f = gzip.open(self.file, 'rb')
-        else: f = io.open(self.file, 'r', encoding='utf-8', newline='\n', errors='ignore')
+        else: f = io.open(self.file, 'rb')
         nline = 0
         for line in f:
             line = line.strip('\n') 
